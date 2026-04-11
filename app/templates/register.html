@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="card shadow-lg border-0 col-lg-6 col-md-8 col-12 mx-auto">
+        <div class="card-body p-4 p-md-5">
+            <h3 class="text-center mb-4">Create Account</h3>
+
+            <form method="POST">
+
+                <!-- Username + Middle Name -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6 col-12">
+                        <label class="form-label">Username</label>
+                        <input type="text" name="username" class="form-control" 
+                               placeholder="Enter username" required
+                               pattern="[A-Za-z\s]+"
+                               title="Only letters and spaces are allowed"
+                               oninput="this.value = this.value.replace(/[^A-Za-z\s]/g,'');">
+                    </div>
+                    <div class="col-md-6 col-12">
+                        <label class="form-label">Middle Name</label>
+                        <input type="text" name="middle_name" class="form-control" 
+                               placeholder="Enter Middle Name" required
+                               pattern="[A-Za-z\s]+"
+                               title="Only letters and spaces are allowed"
+                               oninput="this.value = this.value.replace(/[^A-Za-z\s]/g,'');">
+                    </div>
+                </div>
+
+                <!-- Email -->
+                <div class="mb-3">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" name="email" class="form-control" placeholder="example@gmail.com" required>
+                </div>
+
+                <!-- Password + Confirm Password -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6 col-12">
+                        <label class="form-label">Password</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 col-12">
+                        <label class="form-label">Confirm Password</label>
+                        <input type="password" name="confirm_password" class="form-control" required>
+                    </div>
+                </div>
+
+                <!-- Transaction PIN -->
+                <div class="mb-3 row align-items-center">
+                    <label class="col-sm-4 col-form-label fw-semibold">Transaction PIN</label>
+                    <div class="col-sm-8 col-12 mt-2 mt-sm-0">
+                        <input type="password" name="pin" class="form-control form-control-sm" placeholder="4–6 digit PIN" maxlength="6" required pattern="\d{4,6}" title="Enter 4 to 6 digits">
+                    </div>
+                </div>
+
+                <!-- Role Dropdown -->
+                <div class="mb-3 row align-items-center">
+                    <label class="col-sm-4 col-form-label fw-semibold">Role</label>
+                    <div class="col-sm-8 col-12 mt-2 mt-sm-0">
+                        <select name="role" class="form-select" required>
+                            <option value="user" selected>Normal User</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="manager">Manager</option>
+                        </select>
+                        <small class="text-muted">Only admin can create Admin account</small>
+                    </div>
+                </div>
+
+                <!-- Location + Phone -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6 col-12">
+                        <label class="form-label">Location</label>
+                        <input type="text" name="location" class="form-control" placeholder="City or Town" required>
+                    </div>
+                    <div class="col-md-6 col-12">
+                        <label class="form-label">Phone Number</label>
+                        <input type="text" name="phone_no" class="form-control" placeholder="+211..." required pattern="\+?\d+" title="Only digits allowed">
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="d-grid mb-3">
+                    <button class="btn btn-success btn-lg">Create Account</button>
+                </div>
+
+            </form>
+
+            <div class="text-center mt-3">
+                Already have an account? <a href="{{ url_for('auth.login') }}" class="fw-bold">Login here</a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock %}

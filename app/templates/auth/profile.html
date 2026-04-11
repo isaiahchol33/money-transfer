@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-lg p-4 mx-auto" style="max-width: 500px; width: 100%;">
+        <h3 class="text-center mb-4">Edit Profile</h3>
+
+        <form method="POST" enctype="multipart/form-data">
+            <!-- Profile Image -->
+            <div class="mb-3 text-center">
+                <img src="{{ url_for('static', filename='uploads/' + (current_user.profile_image or 'avatar.png')) }}"  
+                     class="rounded-circle img-fluid" style="max-width:120px; height:auto;" alt="Profile Photo">
+            </div>
+
+            <!-- Upload Profile Photo -->
+            <div class="mb-3">
+                <label class="form-label">Upload Profile Photo</label>
+                <input type="file" name="profile_image" class="form-control" accept="image/*">
+            </div>
+
+            <!-- Username -->
+            <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input type="text" name="username" class="form-control" value="{{ current_user.username }}" required>
+            </div>
+
+            <!-- Location -->
+            <div class="mb-3">
+                <label class="form-label">Location</label>
+                <input type="text" name="location" class="form-control" value="{{ current_user.location }}">
+            </div>
+
+            <!-- Update Button -->
+            <div class="d-grid mt-3">
+                <button class="btn btn-success btn-lg">Update Profile</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .card {
+        padding: 2rem 1rem;
+    }
+    h3 {
+        font-size: 1.5rem;
+    }
+    .btn-lg {
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+    }
+}
+</style>
+{% endblock %}
+

@@ -1,0 +1,175 @@
+/* =========================
+   BASE STYLE
+========================= */
+body {
+    background: #f4f6f9;
+    font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+    overflow-x: hidden;
+}
+
+/* =========================
+   CARDS
+========================= */
+.card {
+    border-radius: 12px;
+    border: none;
+}
+
+/* Summary Cards */
+.summary-card {
+    background: #f8f9fa;
+    transition: 0.2s ease-in-out;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+}
+
+/* Balance Box */
+.balance-box {
+    background: #e9f7ef;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 10px;
+}
+
+/* =========================
+   ICON BOX
+========================= */
+.icon-box {
+    width: 28px;
+    height: 28px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+.btn {
+    border-radius: 8px;
+}
+
+/* =========================
+   NAVBAR
+========================= */
+.navbar-brand {
+    font-size: 20px;
+}
+
+/* =========================
+   INPUTS
+========================= */
+.date-input {
+    width: 120px !important;
+}
+
+/* Focus effect */
+input.form-control:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 8px rgba(74,144,226,0.3);
+}
+
+/* =========================
+   BADGES
+========================= */
+.badge {
+    font-size: 0.65rem;
+}
+
+/* =========================
+   TABLES (BANK STYLE)
+========================= */
+.table td,
+.table th {
+    vertical-align: middle;
+    font-size: 13px;
+}
+
+.table tbody tr:hover {
+    background: #f8f9fa;
+    transition: 0.2s;
+}
+
+/* =========================
+   RECEIPT STYLE
+========================= */
+.receipt {
+    max-width: 420px;
+    margin: 20px auto;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.receipt-header {
+    background: linear-gradient(135deg, #004085, #007bff);
+    color: #fff;
+    padding: 15px;
+    text-align: center;
+}
+
+/* =========================
+   GLASS / LOGIN UI
+========================= */
+.glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    border-radius: 12px;
+}
+
+/* =========================
+   GRADIENT BACKGROUND
+========================= */
+.gradient-bg {
+    background: linear-gradient(135deg, #c0eaff 0%, #f0f4ff 100%);
+    min-height: 100vh;
+    padding: 2rem;
+}
+
+/* =========================
+   MOBILE OPTIMIZATION
+========================= */
+@media (max-width: 768px) {
+
+    .table td,
+    .table th {
+        font-size: 0.7rem;
+        padding: 0.25rem;
+    }
+
+    .btn {
+        font-size: 0.85rem;
+    }
+
+    .date-input {
+        width: 100px !important;
+    }
+
+    form.d-flex {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+
+    h2, h3 {
+        font-size: 1.3rem;
+    }
+
+    .form-control {
+        font-size: 0.9rem;
+    }
+
+    .btn {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.7rem;
+    }
+}
