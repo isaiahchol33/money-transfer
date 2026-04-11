@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container mt-3">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+
+        <div>
+            <h5 class="fw-bold mb-0">🏦 Wallet Audit Log</h5>
+            <small class="text-muted">Secure transaction history</small>
+        </div>
+
+        <!-- LIVE SEARCH INPUT -->
+        <div style="max-width: 320px; width: 100%;">
+            <input type="text"
+                   id="liveSearch"
+                   class="form-control form-control-sm"
+                   placeholder="Search user, admin, location, date...">
+        </div>
+
+    </div>
+
+    <!-- TABLE -->
+    <div class="card shadow-sm border-0">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover table-sm align-middle mb-0">
+
+                <thead class="table-dark small">
+                    <tr>
+                        <th>User</th>
+                        <th>Admin</th>
+                        <th>Old</th>
+                        <th>New</th>
+                        <th>Amt</th>
+                        <th>Action</th>
+                        <th>Date</th>
+                        <th class="text-end">Ctrl</th>
+                    </tr>
+                </thead>
+
+                <tbody class="small">
+
+                    {% if history and history|length > 0 %}
+
+                        {% for h in history %}
+                        <tr class="wallet-row"
+                            data-search="
+                                {{ h.user.username if h.user else '' }}
+                                {{ h.user.location if h.user else '' }}
+                                {{ h.admin.username if h.admin else '' }}
+                                {{ h.action }}
+                                {{ h.created_at }}
+                            ">
+
+                            <!-- USER -->
+                            <td>
+                                <div class="fw-semibold">
+                                    {{ h.user.username if h.user else 'Unknown' }}
+                                </div>
+                                <small class="text-muted">
+                                    {{ h.user.location if h.user else '' }}
+                                </small>
+                            </td>
+
+                            <!-- ADMIN -->
+                            <td>
+                                {{ h.admin.username if h.admin else 'System' }}
+                            </td>
+
+                            <!-- BALANCES -->
+                            <td>{{ h.old_balance or 0 }}</td>
+                            <td>{{ h.new_balance or 0 }}</td>
+
+                            <td class="fw-bold text-success">
+                                {{ h.amount or 0 }}
+                            </td>
+
+                            <!-- ACTION -->
+                            <td>
+                                {% if h.action == 'topup' %}
+                                    <span class="badge bg-success">Top-up</span>
+                                {% elif h.action == 'transfer' %}
+                                    <span class="badge bg-warning text-dark">Transfer</span>
+                                {% elif h.action == 'edit' %}
+                                    <span class="badge bg-primary">Edit</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ h.action }}</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- DATE -->
+                            <td>
+                                {{ h.created_at.strftime('%Y-%m-%d') if h.created_at else '-' }}
+                            </td>
+
+                            <!-- DELETE -->
+                            <td class="text-end">
+
+                                {% if h.action != 'transfer' %}
+                                <form method="POST"
+                                      action="{{ url_for('admin.delete_wallet_history', id=h.id) }}"
+                                      onsubmit="return confirm('Delete this record?');">
+
+                                    <button class="btn btn-outline-danger btn-sm">
+                                        🗑
+                                    </button>
+
+                                </form>
+                                {% else %}
+                                    <span class="badge bg-danger">Locked</span>
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-3">
+                                No records found
+                            </td>
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- 🚀 LIVE SEARCH SCRIPT -->
+<script>
+document.getElementById("liveSearch").addEventListener("input", function () {
+
+    let value = this.value.toLowerCase();
+    let rows = document.querySelectorAll(".wallet-row");
+
+    rows.forEach(row => {
+
+        let text = row.getAttribute("data-search").toLowerCase();
+
+        if (text.includes(value)) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+
+    });
+
+});
+</script>
+
+{% endblock %}

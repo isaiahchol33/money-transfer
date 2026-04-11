@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+
+<!-- BACK BUTTON OUTSIDE CARD -->
+<a href="{{ url_for('home') }}" class="btn btn-outline-primary fixed-back">
+    &larr; Back
+</a>
+
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center p-2 p-md-4">
+
+    <div class="row w-100 m-0 shadow-lg rounded-4 overflow-hidden" 
+         style="max-width: 900px; background-color: #ffffff;">
+
+        <!-- Left Panel: Illustration -->
+        <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center" 
+             style="background: linear-gradient(135deg, #4a90e2, #50e3c2); min-height: 500px;">
+            <div class="text-center text-white px-4">
+                <img src="{{ url_for('static', filename='images/login-illustration.png') }}" 
+                     alt="Money Transfer" class="img-fluid mb-3" style="max-height: 220px;">
+                <h2 class="fw-bold">Secure & Fast Transfers</h2>
+                <p class="mt-2 small">Manage your funds safely and effortlessly with our platform.</p>
+            </div>
+        </div>
+
+        <!-- Right Panel: Login Form -->
+        <div class="col-lg-6 col-md-8 col-sm-12 d-flex align-items-center justify-content-center p-4 p-md-5" 
+             style="min-height: 500px; overflow-y: auto;">
+            <div class="w-100">
+
+                <!-- Logo -->
+                <div class="text-center mb-4">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" width="70" class="mb-2">
+                    <h3 class="fw-bold text-primary mb-0">Money Transfer</h3>
+                </div>
+
+                <!-- Flash messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                <!-- Login Form -->
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Username</label>
+                        <input type="text" class="form-control form-control-lg rounded-3" 
+                               name="username" placeholder="Enter your username" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Password</label>
+                        <input type="password" class="form-control form-control-lg rounded-3" 
+                               name="password" placeholder="Enter your password" required>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="remember_me">
+                            <label class="form-check-label">Remember Me</label>
+                        </div>
+                        <a href="{{ url_for('auth.forgot_password') }}" class="small text-decoration-none">
+                            Forgot Password?
+                        </a>
+                    </div>
+
+                    <div class="d-grid mb-3">
+                        <button type="submit" class="btn btn-primary btn-lg rounded-3 fw-bold">
+                            Login
+                        </button>
+                    </div>
+                </form>
+
+                <hr class="my-3">
+
+                <div class="text-center">
+                    <p class="mb-0 small">
+                        Don't have an account?
+                        <a href="{{ url_for('auth.register') }}" class="fw-bold text-primary">
+                            Register here
+                        </a>
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+
+{% endblock %}
