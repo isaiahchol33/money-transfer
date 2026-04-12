@@ -1,7 +1,6 @@
 from flask import Flask, redirect, url_for, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
-from flask_migrate import Migrate
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash
 import os
@@ -12,7 +11,6 @@ load_dotenv()
 # Initialize extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
-migrate = Migrate()
 
 
 def create_app():
@@ -40,7 +38,6 @@ def create_app():
     # ---------------- INIT EXTENSIONS ----------------
     db.init_app(app)
     login_manager.init_app(app)
-    migrate.init_app(app, db)
 
     login_manager.login_view = 'auth.login'
 
@@ -75,29 +72,30 @@ def create_app():
     def inject_currency():
         return dict(currency="SSP")
 
-    # ---------------- AUTO ADMIN CREATION ----------------
-    def create_admin():
-        admin = User.query.filter_by(username="admin").first()
+    # ---------------- SAFE INIT (TABLES + ADMIN) ----------------
+    def initialize_database():
+        with app.app_context():
+            # Create tables (safe for production)
+            db.create_all()
 
-        if not admin:
-            admin = User(
-                username="admin",
-                email="admin@example.com",
-                password=generate_password_hash("admin1234"),
-                role="admin",
-                is_approved=True,
-                active=True
-            )
-            db.session.add(admin)
-            db.session.commit()
-            print("✅ Default admin created")
+            # Create admin only once
+            admin_user = User.query.filter_by(username="admin").first()
 
-    # Run only when app starts
-    @app.before_request
-    def init_once():
-        if not getattr(app, "already_initialized", False):
-            create_admin()
-            app.already_initialized = True
+            if not admin_user:
+                admin_user = User(
+                    username="admin",
+                    email="admin@example.com",
+                    password=generate_password_hash("admin1234"),
+                    role="admin",
+                    is_approved=True,
+                    active=True
+                )
+                db.session.add(admin_user)
+                db.session.commit()
+                print("✅ Default admin created")
+
+    # Run initialization ONLY once when app starts
+    initialize_database()
 
     # ---------------- ERROR HANDLERS ----------------
     @app.errorhandler(404)
