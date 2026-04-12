@@ -1,5 +1,3 @@
-# app/__init__.py
-
 from flask import Flask, redirect, url_for, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
@@ -17,18 +15,20 @@ login_manager = LoginManager()
 migrate = Migrate()
 
 
-
 def create_app():
     app = Flask(__name__)
 
     # ---------------- CONFIG ----------------
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
 
-    # DATABASE (PostgreSQL + SQLite fallback)
-    db_url = os.environ.get('DATABASE_URL', 'sqlite:///database.db')
+    # ✅ FORCE PostgreSQL (NO SQLite fallback)
+    db_url = os.environ.get('DATABASE_URL')
+
+    if not db_url:
+        raise RuntimeError("❌ DATABASE_URL is not set. Configure it in Render.")
 
     # Fix for Render PostgreSQL
-    if db_url and db_url.startswith("postgres://"):
+    if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
@@ -42,7 +42,6 @@ def create_app():
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
-    
 
     login_manager.login_view = 'auth.login'
 
