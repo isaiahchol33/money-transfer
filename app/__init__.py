@@ -1,50 +1,45 @@
 from flask import Flask, redirect, url_for, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
-from flask_migrate import Migrate
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash
 import os
 
-# Load environment variables
+# Load env
 load_dotenv()
 
-# Initialize extensions
+# Extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
-migrate = Migrate()
 
 
 def create_app():
     app = Flask(__name__)
 
     # ---------------- CONFIG ----------------
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key")
 
-    db_url = os.environ.get('DATABASE_URL')
-
+    db_url = os.environ.get("DATABASE_URL")
     if not db_url:
-        raise RuntimeError("❌ DATABASE_URL is not set. Configure it in Render.")
+        raise RuntimeError("DATABASE_URL not set")
 
-    # Fix Render PostgreSQL URL
+    # Fix Render PostgreSQL
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-    app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    # Upload folder
-    app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    # Uploads
+    app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static/uploads")
+    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
     # ---------------- INIT EXTENSIONS ----------------
     db.init_app(app)
     login_manager.init_app(app)
-    migrate.init_app(app, db)
+    login_manager.login_view = "auth.login"
 
-    login_manager.login_view = 'auth.login'
-
-    # ---------------- IMPORT MODELS ----------------
+    # ---------------- IMPORT MODEL ----------------
     from app.models.user import User
 
     # ---------------- USER LOADER ----------------
@@ -63,53 +58,54 @@ def create_app():
     app.register_blueprint(transfer)
     app.register_blueprint(admin)
 
-    # ---------------- HOME ROUTE ----------------
-    @app.route('/')
+    # ---------------- HOME ----------------
+    @app.route("/")
     def home():
         if current_user.is_authenticated:
-            return redirect(url_for('dashboard.dashboard_home'))
-        return render_template('home.html')
+            return redirect(url_for("dashboard.dashboard_home"))
+        return render_template("home.html")
 
-    # ---------------- CONTEXT PROCESSOR ----------------
+    # ---------------- CONTEXT ----------------
     @app.context_processor
     def inject_currency():
         return dict(currency="SSP")
 
-    # ---------------- AUTO ADMIN CREATION ----------------
-    def create_admin():
-        admin = User.query.filter_by(username="admin").first()
+    # ---------------- ADMIN SEED ----------------
+    def seed_admin():
+        admin_user = User.query.filter_by(username="admin").first()
 
-        if not admin:
-            admin = User(
+        if not admin_user:
+            admin_user = User(
                 username="admin",
                 email="admin@example.com",
                 password=generate_password_hash("admin1234"),
                 role="admin",
                 is_approved=True,
-                active=True
+                active=True,
             )
-            db.session.add(admin)
+            db.session.add(admin_user)
             db.session.commit()
-            print("✅ Default admin created")
+            print("✅ Admin created")
 
-    # Run only when app starts
+    # ---------------- SAFE INIT (IMPORTANT FIX) ----------------
     @app.before_request
-    def init_once():
-        if not getattr(app, "already_initialized", False):
-            create_admin()
-            app.already_initialized = True
+    def initialize_once():
+        if getattr(app, "_db_ready", False):
+            return
 
-    # ---------------- ERROR HANDLERS ----------------
+        with app.app_context():
+            db.create_all()   # ONLY FOR FIRST DEPLOY (no migrations)
+            seed_admin()
+
+        app._db_ready = True
+
+    # ---------------- ERRORS ----------------
     @app.errorhandler(404)
     def not_found(error):
-        return render_template('404.html'), 404
+        return render_template("404.html"), 404
 
     @app.errorhandler(500)
     def server_error(error):
-        return render_template('500.html'), 500
-    with app.app_context():
-        if not hasattr(app, "db_initialized"):
-            db.create_all()
-            app.db_initialized = True
+        return render_template("500.html"), 500
 
     return app
