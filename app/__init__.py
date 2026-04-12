@@ -107,5 +107,10 @@ def create_app():
     @app.errorhandler(500)
     def server_error(error):
         return render_template('500.html'), 500
+        
+        with app.app_context():
+        if not hasattr(app, "db_initialized"):
+            db.create_all()
+            app.db_initialized = True
 
     return app
