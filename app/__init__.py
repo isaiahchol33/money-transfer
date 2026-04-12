@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash
 import os
 
 # Load environment variables
@@ -20,13 +21,12 @@ def create_app():
     # ---------------- CONFIG ----------------
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
 
-    # ✅ FORCE PostgreSQL (NO SQLite fallback)
     db_url = os.environ.get('DATABASE_URL')
 
     if not db_url:
         raise RuntimeError("❌ DATABASE_URL is not set. Configure it in Render.")
 
-    # Fix for Render PostgreSQL
+    # Fix postgres URL for Render
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
@@ -44,6 +44,31 @@ def create_app():
 
     login_manager.login_view = 'auth.login'
 
+    # ---------------- IMPORT MODELS ----------------
+    from app.models.user import User
+
+    # ---------------- AUTO ADMIN ----------------
+    def create_admin():
+        admin = User.query.filter_by(username="admin").first()
+
+        if not admin:
+            admin = User(
+                username="admin",
+                email="isaiahchol33@gmail.com",
+                password=generate_password_hash("admin1234"),
+                role="admin",
+                is_approved=True,
+                active=True
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("✅ Default admin created")
+
+    # ---------------- USER LOADER ----------------
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
+
     # ---------------- BLUEPRINTS ----------------
     from app.routes.auth import auth
     from app.routes.dashboard import dashboard
@@ -55,13 +80,6 @@ def create_app():
     app.register_blueprint(transfer)
     app.register_blueprint(admin)
 
-    # ---------------- USER LOADER ----------------
-    from app.models.user import User
-
-    @login_manager.user_loader
-    def load_user(user_id):
-        return User.query.get(int(user_id))
-
     # ---------------- HOME ROUTE ----------------
     @app.route('/')
     def home():
@@ -69,7 +87,7 @@ def create_app():
             return redirect(url_for('dashboard.dashboard_home'))
         return render_template('home.html')
 
-    # ---------------- CONTEXT PROCESSOR ----------------
+    # ---------------- CONTEXT ----------------
     @app.context_processor
     def inject_currency():
         return dict(currency="SSP")
@@ -82,5 +100,10 @@ def create_app():
     @app.errorhandler(500)
     def server_error(error):
         return render_template('500.html'), 500
+
+    # ---------------- CREATE TABLES + ADMIN ----------------
+    with app.app_context():
+        db.create_all()   # safe fallback (won’t break migrations)
+        create_admin()
 
     return app
