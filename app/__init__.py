@@ -3,7 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
 from dotenv import load_dotenv
-from werkzeug.security import generate_password_hash
 import os
 
 load_dotenv()
@@ -23,13 +22,14 @@ def create_app():
     if not db_url:
         raise RuntimeError("DATABASE_URL not set")
 
+    # Fix Render PostgreSQL URL
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    # ---------------- INIT ----------------
+    # ---------------- INIT EXTENSIONS ----------------
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
@@ -54,13 +54,14 @@ def create_app():
     app.register_blueprint(transfer)
     app.register_blueprint(admin)
 
-    # ---------------- HOME ----------------
+    # ---------------- HOME ROUTE ----------------
     @app.route("/")
     def home():
         if current_user.is_authenticated:
             return redirect(url_for("dashboard.dashboard_home"))
         return render_template("home.html")
 
+    # ---------------- CONTEXT PROCESSOR ----------------
     @app.context_processor
     def inject_currency():
         return dict(currency="SSP")
@@ -73,5 +74,10 @@ def create_app():
     @app.errorhandler(500)
     def server_error(e):
         return render_template("500.html"), 500
+
+    # ---------------- 🔥 TEMP FIX FOR TABLES ----------------
+    # This fixes "no such table: user" on Render
+    with app.app_context():
+        db.create_all()
 
     return app
