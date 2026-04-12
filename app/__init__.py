@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash
 import os
 
 load_dotenv()
@@ -10,6 +11,7 @@ load_dotenv()
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
+
 
 def create_app():
     app = Flask(__name__)
@@ -19,17 +21,18 @@ def create_app():
 
     db_url = os.environ.get("DATABASE_URL")
 
+    # ✅ LOCAL fallback (IMPORTANT)
     if not db_url:
-        raise RuntimeError("DATABASE_URL not set")
+        db_url = "sqlite:///local.db"
 
-    # Fix Render PostgreSQL URL
+    # Fix postgres URL (Render)
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    # ---------------- INIT EXTENSIONS ----------------
+    # ---------------- INIT ----------------
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
@@ -39,6 +42,26 @@ def create_app():
     # ---------------- IMPORT MODELS ----------------
     from app.models.user import User
 
+    # ---------------- CREATE TABLES (CRITICAL FIX) ----------------
+    with app.app_context():
+        db.create_all()
+
+        # ✅ Create admin if not exists
+        admin = User.query.filter_by(username="admin").first()
+        if not admin:
+            admin = User(
+                username="admin",
+                email="admin@example.com",
+                password=generate_password_hash("admin1234"),
+                role="admin",
+                is_approved=True,
+                active=True
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("✅ Admin created")
+
+    # ---------------- USER LOADER ----------------
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
@@ -54,19 +77,19 @@ def create_app():
     app.register_blueprint(transfer)
     app.register_blueprint(admin)
 
-    # ---------------- HOME ROUTE ----------------
+    # ---------------- HOME ----------------
     @app.route("/")
     def home():
         if current_user.is_authenticated:
             return redirect(url_for("dashboard.dashboard_home"))
         return render_template("home.html")
 
-    # ---------------- CONTEXT PROCESSOR ----------------
+    # ---------------- CONTEXT ----------------
     @app.context_processor
     def inject_currency():
         return dict(currency="SSP")
 
-    # ---------------- ERROR HANDLERS ----------------
+    # ---------------- ERRORS ----------------
     @app.errorhandler(404)
     def not_found(e):
         return render_template("404.html"), 404
@@ -74,10 +97,5 @@ def create_app():
     @app.errorhandler(500)
     def server_error(e):
         return render_template("500.html"), 500
-
-    # ---------------- 🔥 TEMP FIX FOR TABLES ----------------
-    # This fixes "no such table: user" on Render
-    with app.app_context():
-        db.create_all()
 
     return app
