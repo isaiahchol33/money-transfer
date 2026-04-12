@@ -32,6 +32,15 @@ def create_app():
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+    # ✅ DATABASE PERFORMANCE (NEW)
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_size": 5,
+        "max_overflow": 10,
+        "pool_timeout": 30,
+        "pool_recycle": 1800,
+        "pool_pre_ping": True
+    }
+
     # ---------------- INIT ----------------
     db.init_app(app)
     login_manager.init_app(app)
@@ -42,24 +51,28 @@ def create_app():
     # ---------------- IMPORT MODELS ----------------
     from app.models.user import User
 
-    # ---------------- CREATE TABLES (CRITICAL FIX) ----------------
-    with app.app_context():
-        db.create_all()
+    # ---------------- SAFE DB INIT ----------------
+    def initialize_database():
+        with app.app_context():
+            db.create_all()
 
-        # ✅ Create admin if not exists
-        admin = User.query.filter_by(username="admin").first()
-        if not admin:
-            admin = User(
-                username="admin",
-                email="admin@example.com",
-                password=generate_password_hash("admin1234"),
-                role="admin",
-                is_approved=True,
-                active=True
-            )
-            db.session.add(admin)
-            db.session.commit()
-            print("✅ Admin created")
+            # ✅ Create admin only once
+            admin = User.query.filter_by(username="admin").first()
+            if not admin:
+                admin = User(
+                    username="admin",
+                    email="iasiahchol33@gmail.com",
+                    password=generate_password_hash("admin123"),
+                    role="admin",
+                    is_approved=True,
+                    active=True
+                )
+                db.session.add(admin)
+                db.session.commit()
+                print("✅ Admin created")
+
+    # Run once at startup
+    initialize_database()
 
     # ---------------- USER LOADER ----------------
     @login_manager.user_loader
