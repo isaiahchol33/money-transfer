@@ -1,0 +1,11 @@
+migrations/ 
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+create_admin.py
+instance/
+.pytest_cache/
+create_superuser.py
+celery_worker.py
