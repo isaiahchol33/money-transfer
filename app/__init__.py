@@ -3,7 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
 from dotenv import load_dotenv
-from werkzeug.security import generate_password_hash
 import os
 
 load_dotenv()
@@ -21,9 +20,9 @@ def create_app():
 
     db_url = os.environ.get("DATABASE_URL")
 
-    # ✅ LOCAL fallback (IMPORTANT)
+    # ✅ LOCAL fallback
     if not db_url:
-        db_url = "sqlite:///local.db"
+        db_url = "sqlite:///database.db"
 
     # Fix postgres URL (Render)
     if db_url.startswith("postgres://"):
@@ -32,7 +31,7 @@ def create_app():
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    # ✅ DATABASE PERFORMANCE (NEW)
+    # ✅ DATABASE PERFORMANCE
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_size": 5,
         "max_overflow": 10,
@@ -56,21 +55,6 @@ def create_app():
         with app.app_context():
             db.create_all()
 
-            # ✅ Create admin only once
-            admin = User.query.filter_by(username="admin").first()
-            if not admin:
-                admin = User(
-                    username="admin",
-                    email="iasiahchol33@gmail.com",
-                    password=generate_password_hash("admin123"),
-                    role="admin",
-                    is_approved=True,
-                    active=True
-                )
-                db.session.add(admin)
-                db.session.commit()
-                print("✅ Admin created")
-
     # Run once at startup
     initialize_database()
 
@@ -83,12 +67,10 @@ def create_app():
     from app.routes.auth import auth
     from app.routes.dashboard import dashboard
     from app.routes.transfer import transfer
-    from app.routes.admin import admin
 
     app.register_blueprint(auth)
     app.register_blueprint(dashboard)
     app.register_blueprint(transfer)
-    app.register_blueprint(admin)
 
     # ---------------- HOME ----------------
     @app.route("/")
