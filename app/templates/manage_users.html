@@ -7,14 +7,20 @@
 
     <!-- SEARCH FORM -->
     <form method="GET" class="d-flex mb-3 gap-2 flex-wrap">
-        <input type="text" name="search" value="{{ search or '' }}" placeholder="Search username or phone" 
-               class="form-control flex-grow-1" style="min-width: 150px;">
+        <input type="text"
+               name="search"
+               value="{{ search or '' }}"
+               placeholder="Search username or phone"
+               class="form-control flex-grow-1"
+               style="min-width: 150px;">
+
         <button class="btn btn-primary flex-shrink-0">Search</button>
     </form>
 
     <!-- USERS TABLE -->
     <div class="table-responsive">
         <table class="table table-sm table-hover align-middle text-center">
+
             <thead class="table-dark small">
                 <tr>
                     <th>#</th>
@@ -26,12 +32,19 @@
                     <th>Actions</th>
                 </tr>
             </thead>
+
             <tbody class="small">
+
                 {% for u in users %}
+                {% set wallet = u.get_wallet() %}
+
                 <tr>
                     <td>{{ loop.index }}</td>
+
                     <td>{{ u.username }}</td>
-                    <td>{{ u.phone }}</td>
+
+                    <td>{{ u.phone or '-' }}</td>
+
                     <td>
                         {% if u.is_active %}
                             <span class="badge bg-success">Active</span>
@@ -39,6 +52,7 @@
                             <span class="badge bg-secondary">Inactive</span>
                         {% endif %}
                     </td>
+
                     <td>
                         {% if u.is_approved %}
                             <span class="badge bg-success">Approved</span>
@@ -46,49 +60,80 @@
                             <span class="badge bg-warning text-dark">Pending</span>
                         {% endif %}
                     </td>
-                    <td>{{ u.get_wallet().balance if u.get_wallet() else 0 | round(2) }}</td>
+
+                    <td>
+                        {{ (wallet.balance if wallet else 0) | round(2) }}
+                    </td>
+
                     <td class="d-flex gap-1 justify-content-center flex-wrap">
 
                         <!-- APPROVE -->
                         {% if not u.is_approved %}
-                        <form method="POST" action="{{ url_for('transfer.approve_user', user_id=u.id) }}">
-                            <button class="btn btn-success btn-sm py-0 px-1">✅ Approve</button>
+                        <form method="POST"
+                              action="{{ url_for('transfer.approve_user', user_id=u.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="btn btn-success btn-sm py-0 px-1">
+                                ✅ Approve
+                            </button>
                         </form>
                         {% endif %}
 
                         <!-- ACTIVATE / DEACTIVATE -->
                         {% if u.is_active %}
-                        <form method="POST" action="{{ url_for('transfer.deactivate_user', user_id=u.id) }}">
-                            <button class="btn btn-warning btn-sm py-0 px-1">🚫 Deactivate</button>
+                        <form method="POST"
+                              action="{{ url_for('transfer.deactivate_user', user_id=u.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="btn btn-warning btn-sm py-0 px-1">
+                                🚫 Deactivate
+                            </button>
                         </form>
                         {% else %}
-                        <form method="POST" action="{{ url_for('transfer.activate_user', user_id=u.id) }}">
-                            <button class="btn btn-primary btn-sm py-0 px-1">✔️ Activate</button>
+                        <form method="POST"
+                              action="{{ url_for('transfer.activate_user', user_id=u.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="btn btn-primary btn-sm py-0 px-1">
+                                ✔️ Activate
+                            </button>
                         </form>
                         {% endif %}
 
                         <!-- TOP UP -->
-                        <form method="POST" action="{{ url_for('transfer.topup_wallet', user_id=u.id) }}" 
+                        <form method="POST"
+                              action="{{ url_for('transfer.topup_wallet', user_id=u.id) }}"
                               class="d-flex gap-1 flex-wrap justify-content-center">
-                            <input type="number" name="amount" placeholder="Amount" 
-                                   class="form-control form-control-sm" style="width: 70px; min-width: 60px;">
-                            <button class="btn btn-success btn-sm py-0 px-1">💰 Top Up</button>
+
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                            <input type="number"
+                                   name="amount"
+                                   placeholder="Amount"
+                                   class="form-control form-control-sm"
+                                   style="width: 70px; min-width: 60px;"
+                                   min="1"
+                                   step="0.01"
+                                   required>
+
+                            <button class="btn btn-success btn-sm py-0 px-1">
+                                💰 Top Up
+                            </button>
+
                         </form>
 
                     </td>
                 </tr>
+
                 {% else %}
                 <tr>
-                    <td colspan="7" class="text-muted">No users found in your location.</td>
+                    <td colspan="7" class="text-muted">
+                        No users found in your location.
+                    </td>
                 </tr>
                 {% endfor %}
+
             </tbody>
+
         </table>
     </div>
 
 </div>
-
-
 {% endblock %}
-
-

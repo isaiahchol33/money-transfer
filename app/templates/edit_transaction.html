@@ -1,37 +1,298 @@
 {% extends 'base.html' %}
+{% block title %}Recent Transactions{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <h3 class="fw-bold mb-3">✏️ Edit Transaction</h3>
 
-    <form method="POST" class="mt-2">
+<div class="container-fluid mt-3">
 
-        <div class="mb-3">
-            <label class="form-label">Receiver Name</label>
-            <input type="text" name="receiver_name" class="form-control"
-                   value="{{ transaction.receiver_name }}" required>
+    <!-- HEADER -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+
+        <h4 class="fw-bold text-primary mb-0">
+            📜 Recent Transactions
+        </h4>
+
+        <div class="ms-md-auto w-100" style="max-width: 280px;">
+            <input type="text"
+                   id="liveSearch"
+                   class="form-control form-control-sm"
+                   placeholder="Search name, phone, status...">
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Receiver Phone</label>
-            <input type="text" name="receiver_phone" class="form-control"
-                   value="{{ transaction.receiver_phone }}" required>
+    </div>
+
+    <!-- TABLE -->
+    <div id="tableWrapper">
+
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-body p-2">
+
+                {% if transactions.items %}
+
+                <div class="table-responsive">
+
+                    <table class="table table-hover table-sm align-middle text-center mb-0">
+
+                        <thead class="table-dark small">
+                            <tr>
+                                <th>#</th>
+                                <th>Sender</th>
+                                <th class="d-none d-md-table-cell">Sender Location</th>
+                                <th>Receiver</th>
+                                <th class="d-none d-md-table-cell">Receiver Location</th>
+                                <th>Phone</th>
+                                <th>Amount</th>
+                                <th class="d-none d-md-table-cell">Commission</th>
+                                <th>Status</th>
+                                <th class="d-none d-md-table-cell">Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="transactionBody" class="small">
+
+                            {% for t in transactions.items %}
+                            <tr>
+
+                                <td>{{ loop.index + (transactions.page - 1) * transactions.per_page }}</td>
+
+                                <td>{{ t.sender_name or '-' }}</td>
+                                <td class="d-none d-md-table-cell">{{ t.sender_location or '-' }}</td>
+
+                                <td>{{ t.receiver_name or '-' }}</td>
+                                <td class="d-none d-md-table-cell">{{ t.receiver_location or '-' }}</td>
+
+                                <td>{{ t.receiver_phone or '-' }}</td>
+
+                                <td class="text-success fw-bold">
+                                    SSP {{ (t.amount or 0) | round(2) }}
+                                </td>
+
+                                <td class="text-warning d-none d-md-table-cell">
+                                    SSP {{ (t.commission or 0) | round(2) }}
+                                </td>
+
+                                <td>
+                                    {% if t.status == 'Pending' %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    {% elif t.status == 'Paid' %}
+                                        <span class="badge bg-success">Paid</span>
+                                    {% elif t.status == 'Completed' %}
+                                        <span class="badge bg-primary">Completed</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ t.status }}</span>
+                                    {% endif %}
+                                </td>
+
+                                <td class="d-none d-md-table-cell">
+                                    {{ t.date.strftime('%Y-%m-%d %H:%M') if t.date else '-' }}
+                                </td>
+
+                                <!-- ACTIONS -->
+                                <td>
+                                    <div class="d-flex gap-1 justify-content-center">
+
+                                        <!-- EDIT -->
+                                        {% if current_user.role in ['admin','manager'] or t.sender_cashier_id == current_user.id %}
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-primary editBtn"
+                                                data-id="{{ t.id }}"
+                                                data-sender="{{ t.sender_name }}"
+                                                data-location="{{ t.sender_location }}"
+                                                data-status="{{ t.status }}"
+                                                data-date="{{ t.date.strftime('%Y-%m-%d %H:%M') if t.date else '-' }}"
+                                                data-name="{{ t.receiver_name }}"
+                                                data-phone="{{ t.receiver_phone }}"
+                                                data-amount="{{ t.amount }}"
+                                                data-commission="{{ t.commission }}">
+                                            ✏️
+                                        </button>
+                                        {% endif %}
+
+                                        <!-- PAY -->
+                                        {% if t.status != 'Paid' and current_user.location == t.receiver_location %}
+                                        <form method="POST"
+                                              action="{{ url_for('transfer.pay_transaction', transaction_id=t.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button class="btn btn-sm btn-success">💰</button>
+                                        </form>
+                                        {% endif %}
+
+                                        <!-- RECEIPT -->
+                                        <a href="{{ url_for('admin.show_receipt', tx_id=t.id) }}"
+                                           target="_blank"
+                                           class="btn btn-sm btn-outline-secondary">
+                                            🧾
+                                        </a>
+
+                                    </div>
+                                </td>
+
+                            </tr>
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                {% else %}
+                <div class="text-center py-4 text-muted small">
+                    <h6>No transactions found</h6>
+                </div>
+                {% endif %}
+
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Amount</label>
-            <input type="number" name="amount" step="0.01" class="form-control"
-                   value="{{ transaction.amount }}" required>
-        </div>
+    </div>
 
-        <div class="mb-3">
-            <p class="mb-1">Commission (2%): <strong>{{ transaction.commission }}</strong></p>
-        </div>
-
-        <div class="d-flex flex-column flex-sm-row gap-2">
-            <button type="submit" class="btn btn-success flex-grow-1">Update Transaction</button>
-            <a href="{{ url_for('transfer.recent_transactions_view') }}" class="btn btn-secondary flex-grow-1">Cancel</a>
-        </div>
-    </form>
 </div>
+
+<!-- ================= EDIT MODAL ================= -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <form method="POST" id="editForm">
+
+                <!-- CSRF -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">✏️ Edit Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="row mb-2 small">
+                        <div class="col-md-6">
+                            <b>Sender:</b> <span id="modalSender"></span><br>
+                            <b>Location:</b> <span id="modalLocation"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <b>Status:</b> <span id="modalStatus"></span><br>
+                            <b>Date:</b> <span id="modalDate"></span>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row g-2">
+
+                        <div class="col-md-6">
+                            <input type="text" id="editName" name="receiver_name"
+                                   class="form-control" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <input type="text" id="editPhone" name="receiver_phone"
+                                   class="form-control" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <input type="number" id="editAmount" name="amount"
+                                   step="0.01" class="form-control" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <input type="text" id="commissionDisplay"
+                                   class="form-control bg-light" readonly>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">💾 Save</button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<!-- ================= JS ================= -->
+<script>
+
+const searchInput = document.getElementById("liveSearch");
+
+if (searchInput) {
+    searchInput.addEventListener("input", function () {
+        let filter = this.value.toLowerCase();
+        document.querySelectorAll("#transactionBody tr").forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(filter) ? "" : "none";
+        });
+    });
+}
+
+// EDIT MODAL
+const rate = 0.02;
+
+document.querySelectorAll(".editBtn").forEach(btn => {
+    btn.addEventListener("click", function () {
+
+        document.getElementById("modalSender").innerText = this.dataset.sender;
+        document.getElementById("modalLocation").innerText = this.dataset.location;
+        document.getElementById("modalDate").innerText = this.dataset.date;
+
+        let status = this.dataset.status;
+        let badge = `<span class="badge bg-secondary">${status}</span>`;
+        if (status === "Pending") badge = `<span class="badge bg-warning text-dark">Pending</span>`;
+        if (status === "Paid") badge = `<span class="badge bg-success">Paid</span>`;
+        document.getElementById("modalStatus").innerHTML = badge;
+
+        document.getElementById("editName").value = this.dataset.name || "";
+        document.getElementById("editPhone").value = this.dataset.phone || "";
+        document.getElementById("editAmount").value = this.dataset.amount || 0;
+
+        document.getElementById("commissionDisplay").value =
+            "SSP " + (parseFloat(this.dataset.commission || 0)).toFixed(2);
+
+        document.getElementById("editForm").action =
+            "/transfer/edit/" + this.dataset.id;
+
+        new bootstrap.Modal(document.getElementById('editModal')).show();
+    });
+});
+
+// COMMISSION LIVE UPDATE
+const amountInput = document.getElementById("editAmount");
+if (amountInput) {
+    amountInput.addEventListener("input", function () {
+        let amount = parseFloat(this.value) || 0;
+        document.getElementById("commissionDisplay").value =
+            "SSP " + (amount * rate).toFixed(2);
+    });
+}
+
+// AUTO REFRESH
+let lastHTML = "";
+
+setInterval(async () => {
+    try {
+        const res = await fetch(window.location.href, {
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const newBody = doc.querySelector("#transactionBody");
+
+        if (newBody && newBody.innerHTML !== lastHTML) {
+            document.querySelector("#transactionBody").innerHTML = newBody.innerHTML;
+            lastHTML = newBody.innerHTML;
+        }
+
+    } catch (e) {
+        console.log("Refresh error", e);
+    }
+}, 5000);
+
+</script>
 
 {% endblock %}

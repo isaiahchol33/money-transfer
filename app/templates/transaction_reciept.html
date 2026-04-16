@@ -2,22 +2,18 @@
 
 {% block content %}
 
-
-
 <div class="receipt">
 
-    <!-- 🔷 HEADER -->
+    <!-- HEADER -->
     <div class="receipt-header">
-        <!-- Replace with your logo -->
         <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
-        <h4>MyMoney Transfer</h4>
+        <h4>Money Transfer</h4>
         <small>Fast • Secure • Reliable</small>
     </div>
 
-    <!-- 🔷 BODY -->
+    <!-- BODY -->
     <div class="receipt-body">
 
-        <!-- TRANSACTION -->
         <div class="section-title">Transaction Info</div>
         <div class="row-line"><span>ID:</span><span>#{{ transaction.id }}</span></div>
         <div class="row-line">
@@ -27,28 +23,21 @@
 
         <div class="row-line">
             <span>Status:</span>
-            <span class="status
-                {% if transaction.status == 'Paid' %}paid
-                {% elif transaction.status == 'Pending' %}pending
-                {% else %}failed
-                {% endif %}">
+            <span class="status {{ transaction.status|lower }}">
                 {{ transaction.status }}
             </span>
         </div>
 
-        <!-- SENDER -->
         <div class="section-title">Sender</div>
         <div class="row-line"><span>Name:</span><span>{{ transaction.sender_name }}</span></div>
         <div class="row-line"><span>Phone:</span><span>{{ transaction.sender_phone }}</span></div>
         <div class="row-line"><span>Location:</span><span>{{ transaction.sender_location }}</span></div>
 
-        <!-- RECEIVER -->
         <div class="section-title">Receiver</div>
         <div class="row-line"><span>Name:</span><span>{{ transaction.receiver_name }}</span></div>
         <div class="row-line"><span>Phone:</span><span>{{ transaction.receiver_phone }}</span></div>
         <div class="row-line"><span>Location:</span><span>{{ transaction.receiver_location }}</span></div>
 
-        <!-- AMOUNT -->
         <div class="section-title">Payment</div>
         <div class="amount-box">
             <div class="row-line">
@@ -65,136 +54,23 @@
             </div>
         </div>
 
-        <!-- CASHIERS -->
         <div class="section-title">Processed By</div>
         <div class="row-line"><span>Sender Agent:</span><span>{{ transaction.sender_cashier_name or '-' }}</span></div>
         <div class="row-line"><span>Receiver Agent:</span><span>{{ transaction.receiver_cashier_name or '-' }}</span></div>
 
     </div>
 
-    <!-- 🔷 FOOTER -->
     <div class="receipt-footer">
-        Thank you for using MyMoney Transfer<br>
+        Thank you for using Money Transfer<br>
         📞 Support: +211 XXX XXX XXX
     </div>
 
-    <!-- PRINT -->
     <button class="print-btn" onclick="window.print()">🖨 Print Receipt</button>
 
 </div>
 
-<!-- AUTO PRINT -->
 <script>
-    window.onload = () => {
-        window.print();
-    };
+window.onload = () => window.print();
 </script>
 
 {% endblock %}
-
-
-#app/templates/transaction_pd.html
-<!DOCTYPE html>
-<html>
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 10px;
-            background-color: #f9f9f9;
-        }
-
-        h3 {
-            text-align: center;
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-        }
-
-        .table-responsive {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-            min-width: 900px; /* ensure horizontal scroll on small devices */
-            background-color: #fff;
-        }
-
-        th, td {
-            border: 1px solid #ccc;
-            padding: 6px 8px;
-            text-align: center;
-            white-space: nowrap;
-        }
-
-        th {
-            background-color: #e0e0e0;
-            font-weight: bold;
-        }
-
-        tr:nth-child(even) {
-            background-color: #f7f7f7;
-        }
-
-        @media (max-width: 768px) {
-            table {
-                font-size: 0.75rem;
-            }
-            th, td {
-                padding: 4px 6px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            h3 {
-                font-size: 1rem;
-            }
-        }
-    </style>
-</head>
-<body>
-
-    <h3>📜 Recent Transactions</h3>
-
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>TXN ID</th>
-                    <th>Sender</th>
-                    <th>Phone</th>
-                    <th>Sender Location</th>
-                    <th>Receiver</th>
-                    <th>Phone</th>
-                    <th>Receiver Location</th>
-                    <th>Amount</th>
-                    <th>Commission</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for t in transactions %}
-                <tr>
-                    <td>{{ t.id }}</td>
-                    <td>{{ t.sender_name }}</td>
-                    <td>{{ t.sender_phone }}</td>
-                    <td>{{ t.sender_location }}</td>
-                    <td>{{ t.receiver_name }}</td>
-                    <td>{{ t.receiver_phone }}</td>
-                    <td>{{ t.receiver_location }}</td>
-                    <td>{{ currency }}{{ t.amount }}</td>
-                    <td>{{ currency }}{{ t.commission }}</td>
-                    <td>{{ t.status }}</td>
-                    <td>{{ t.date.strftime("%Y-%m-%d %H:%M") if t.date else "" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-</body>
-</html>

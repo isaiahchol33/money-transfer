@@ -1,163 +1,249 @@
 {% extends 'base.html' %}
 {% block content %}
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<style>
+.icon-btn {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 12px;
+    padding: 0;
+}
+
+.bulk-bar { gap: 6px; }
+
+.table td, .table th { vertical-align: middle; }
+
+.btn { padding: 4px 6px; font-size: 12px; }
+</style>
+
 <div class="container mt-3">
 
     <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
 
         <div>
-            <h5 class="fw-bold mb-0">🏦 Wallet Audit Log</h5>
-            <small class="text-muted">Secure transaction history</small>
+            <h5 class="fw-bold mb-0">
+                <i class="bi bi-wallet2"></i> Wallet Audit Log
+            </h5>
+            <small class="text-muted">Secure transaction history (live updates)</small>
         </div>
 
-        <!-- LIVE SEARCH INPUT -->
-        <div style="max-width: 320px; width: 100%;">
-            <input type="text"
-                   id="liveSearch"
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('admin.download_excel') }}"
+               class="btn btn-sm btn-success">
+                <i class="bi bi-file-earmark-excel"></i>
+            </a>
+
+            <input type="text" id="liveSearch"
                    class="form-control form-control-sm"
-                   placeholder="Search user, admin, location, date...">
+                   placeholder="Search..."
+                   style="max-width:160px;">
         </div>
 
+    </div>
+
+    <!-- BULK -->
+    <div class="d-flex justify-content-between mb-2 bulk-bar">
+
+        <div class="d-flex gap-2">
+
+            <button class="btn btn-outline-primary icon-btn" onclick="selectAll()">
+                <i class="bi bi-check2-square"></i>
+            </button>
+
+            <button class="btn btn-outline-secondary icon-btn" onclick="unselectAll()">
+                <i class="bi bi-square"></i>
+            </button>
+
+            <form id="bulkDeleteForm">
+                <input type="hidden" name="ids" id="selectedIds">
+                <button class="btn btn-danger icon-btn">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </form>
+
+        </div>
     </div>
 
     <!-- TABLE -->
     <div class="card shadow-sm border-0">
-
         <div class="table-responsive">
 
-            <table class="table table-hover table-sm align-middle mb-0">
-
+            <table class="table table-hover table-sm mb-0">
                 <thead class="table-dark small">
                     <tr>
+                        <th width="40"><input type="checkbox" onclick="toggleAll(this)"></th>
                         <th>User</th>
                         <th>Admin</th>
                         <th>Old</th>
                         <th>New</th>
-                        <th>Amt</th>
+                        <th>Amount</th>
                         <th>Action</th>
                         <th>Date</th>
-                        <th class="text-end">Ctrl</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
 
-                <tbody class="small">
+                <tbody id="historyTable" class="small">
 
-                    {% if history and history|length > 0 %}
+                {% for h in history %}
+                <tr class="wallet-row"
+                    data-id="{{ h.id }}"
+                    data-search="{{ (h.user.username if h.user else '') ~ ' ' ~ h.action }}">
 
-                        {% for h in history %}
-                        <tr class="wallet-row"
-                            data-search="
-                                {{ h.user.username if h.user else '' }}
-                                {{ h.user.location if h.user else '' }}
-                                {{ h.admin.username if h.admin else '' }}
-                                {{ h.action }}
-                                {{ h.created_at }}
-                            ">
+                    <td><input type="checkbox" class="row-check" value="{{ h.id }}"></td>
 
-                            <!-- USER -->
-                            <td>
-                                <div class="fw-semibold">
-                                    {{ h.user.username if h.user else 'Unknown' }}
-                                </div>
-                                <small class="text-muted">
-                                    {{ h.user.location if h.user else '' }}
-                                </small>
-                            </td>
+                    <td>
+                        <b>{{ h.user.username if h.user else 'Unknown' }}</b><br>
+                        <small class="text-muted">{{ h.user.location if h.user else '' }}</small>
+                    </td>
 
-                            <!-- ADMIN -->
-                            <td>
-                                {{ h.admin.username if h.admin else 'System' }}
-                            </td>
+                    <td>{{ h.admin.username if h.admin else 'System' }}</td>
 
-                            <!-- BALANCES -->
-                            <td>{{ h.old_balance or 0 }}</td>
-                            <td>{{ h.new_balance or 0 }}</td>
+                    <td>{{ h.old_balance or 0 }}</td>
+                    <td>{{ h.new_balance or 0 }}</td>
 
-                            <td class="fw-bold text-success">
-                                {{ h.amount or 0 }}
-                            </td>
+                    <td class="fw-bold text-success">{{ h.amount or 0 }}</td>
 
-                            <!-- ACTION -->
-                            <td>
-                                {% if h.action == 'topup' %}
-                                    <span class="badge bg-success">Top-up</span>
-                                {% elif h.action == 'transfer' %}
-                                    <span class="badge bg-warning text-dark">Transfer</span>
-                                {% elif h.action == 'edit' %}
-                                    <span class="badge bg-primary">Edit</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">{{ h.action }}</span>
-                                {% endif %}
-                            </td>
+                    <td>
+                        {% if h.action == 'topup' %}
+                            <span class="badge bg-success">Top-up</span>
+                        {% elif h.action == 'transfer' %}
+                            <span class="badge bg-warning text-dark">Transfer</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ h.action }}</span>
+                        {% endif %}
+                    </td>
 
-                            <!-- DATE -->
-                            <td>
-                                {{ h.created_at.strftime('%Y-%m-%d') if h.created_at else '-' }}
-                            </td>
+                    <td>
+                        {{ h.created_at.strftime('%Y-%m-%d %H:%M') if h.created_at else '-' }}
+                    </td>
 
-                            <!-- DELETE -->
-                            <td class="text-end">
+                    <td class="text-end">
+                        {% if h.action != 'transfer' %}
+                        <button onclick="deleteRow({{ h.id }})"
+                                class="btn btn-outline-danger icon-btn">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                        {% else %}
+                            <span class="badge bg-danger">Locked</span>
+                        {% endif %}
+                    </td>
 
-                                {% if h.action != 'transfer' %}
-                                <form method="POST"
-                                      action="{{ url_for('admin.delete_wallet_history', id=h.id) }}"
-                                      onsubmit="return confirm('Delete this record?');">
-
-                                    <button class="btn btn-outline-danger btn-sm">
-                                        🗑
-                                    </button>
-
-                                </form>
-                                {% else %}
-                                    <span class="badge bg-danger">Locked</span>
-                                {% endif %}
-
-                            </td>
-
-                        </tr>
-                        {% endfor %}
-
-                    {% else %}
-
-                        <tr>
-                            <td colspan="8" class="text-center text-muted py-3">
-                                No records found
-                            </td>
-                        </tr>
-
-                    {% endif %}
+                </tr>
+                {% endfor %}
 
                 </tbody>
-
             </table>
 
         </div>
-
     </div>
-
 </div>
 
-<!-- 🚀 LIVE SEARCH SCRIPT -->
 <script>
-document.getElementById("liveSearch").addEventListener("input", function () {
+function getCheckedIds(){
+    return [...document.querySelectorAll(".row-check:checked")].map(e => e.value);
+}
 
-    let value = this.value.toLowerCase();
-    let rows = document.querySelectorAll(".wallet-row");
+function updateHidden(){
+    document.getElementById("selectedIds").value = getCheckedIds().join(",");
+}
 
-    rows.forEach(row => {
+document.addEventListener("change", e => {
+    if(e.target.classList.contains("row-check")) updateHidden();
+});
 
-        let text = row.getAttribute("data-search").toLowerCase();
+function toggleAll(m){
+    document.querySelectorAll(".row-check").forEach(c => c.checked = m.checked);
+    updateHidden();
+}
 
-        if (text.includes(value)) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
-        }
+function selectAll(){
+    document.querySelectorAll(".row-check").forEach(c => c.checked = true);
+    updateHidden();
+}
 
+function unselectAll(){
+    document.querySelectorAll(".row-check").forEach(c => c.checked = false);
+    updateHidden();
+}
+</script>
+
+<script>
+async function deleteRow(id){
+    if(!confirm("Delete record?")) return;
+
+    const res = await fetch(`/admin/wallet-history/delete/${id}`, {
+        method:"POST",
+        headers:{"X-Requested-With":"XMLHttpRequest"}
     });
 
+    const data = await res.json();
+    if(data.success){
+        document.querySelector(`tr[data-id='${id}']`)?.remove();
+    } else {
+        alert(data.error || "Failed");
+    }
+}
+</script>
+
+<!-- LIVE SEARCH -->
+<script>
+document.getElementById("liveSearch").addEventListener("input", function(){
+    const val = this.value.toLowerCase();
+
+    document.querySelectorAll(".wallet-row").forEach(row=>{
+        const text = (row.dataset.search || "").toLowerCase();
+        row.style.display = text.includes(val) ? "" : "none";
+    });
 });
+</script>
+
+<!-- LIVE UPDATE (SAFE FIXED VERSION) -->
+<script>
+let lastId = 0;
+
+async function fetchUpdates(){
+    try {
+        const res = await fetch(`/admin/wallet-history/api?last_id=${lastId}`);
+        const data = await res.json();
+
+        const tbody = document.getElementById("historyTable");
+
+        data.forEach(h => {
+            const row = document.createElement("tr");
+            row.className = "wallet-row";
+            row.dataset.id = h.id;
+            row.dataset.search = `${h.user || ''} ${h.action || ''}`;
+
+            row.innerHTML = `
+                <td><input type="checkbox" class="row-check" value="${h.id}"></td>
+                <td><b>${h.user || 'Unknown'}</b></td>
+                <td>${h.admin || 'System'}</td>
+                <td>${h.old_balance || 0}</td>
+                <td>${h.new_balance || 0}</td>
+                <td class="fw-bold text-success">${h.amount || 0}</td>
+                <td>${h.action || ''}</td>
+                <td>${h.created_at || '-'}</td>
+                <td>•</td>
+            `;
+
+            tbody.prepend(row);
+            lastId = Math.max(lastId, h.id);
+        });
+
+    } catch(err){
+        console.error("Live update error", err);
+    }
+}
+
+setInterval(fetchUpdates, 10000);
 </script>
 
 {% endblock %}

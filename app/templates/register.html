@@ -1,99 +1,225 @@
 {% extends 'base.html' %}
 
+{% block title %}Create Account{% endblock %}
+
 {% block content %}
-<div class="container mt-4 mb-5">
-    <div class="card shadow-lg border-0 col-lg-6 col-md-8 col-12 mx-auto">
-        <div class="card-body p-4 p-md-5">
-            <h3 class="text-center mb-4">Create Account</h3>
 
-            <form method="POST">
+<div class="container py-4">
 
-                <!-- Username + Middle Name -->
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6 col-12">
-                        <label class="form-label">Username</label>
-                        <input type="text" name="username" class="form-control" 
-                               placeholder="Enter username" required
-                               pattern="[A-Za-z\s]+"
-                               title="Only letters and spaces are allowed"
-                               oninput="this.value = this.value.replace(/[^A-Za-z\s]/g,'');">
+    <div class="row justify-content-center">
+
+        <div class="col-12 col-md-10 col-lg-7 col-xl-6">
+
+            <div class="card shadow-lg border-0 rounded-4">
+
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-4">
+                        <h3 class="fw-bold text-primary mb-1">Create Account</h3>
+                        <small class="text-muted">Register a new user account</small>
                     </div>
-                    <div class="col-md-6 col-12">
-                        <label class="form-label">Middle Name</label>
-                        <input type="text" name="middle_name" class="form-control" 
-                               placeholder="Enter Middle Name" required
-                               pattern="[A-Za-z\s]+"
-                               title="Only letters and spaces are allowed"
-                               oninput="this.value = this.value.replace(/[^A-Za-z\s]/g,'');">
+
+                    <!-- ================= FORM ================= -->
+                    <form method="POST" id="registerForm">
+
+                        <!-- ✅ CSRF FIX -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- USERNAMES -->
+                        <div class="row g-3 mb-3">
+
+                            <div class="col-md-6">
+                                <label class="form-label">Username</label>
+                                <input type="text" name="username" id="username"
+                                       class="form-control"
+                                       placeholder="Enter username"
+                                       required>
+                                <small id="userErr" class="text-danger"></small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Middle Name</label>
+                                <input type="text" name="middle_name" id="middle_name"
+                                       class="form-control"
+                                       placeholder="Enter middle name">
+                            </div>
+
+                        </div>
+
+                        <!-- EMAIL -->
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" id="email"
+                                   class="form-control"
+                                   placeholder="example@gmail.com"
+                                   required>
+                            <small id="emailErr" class="text-danger"></small>
+                        </div>
+
+                        <!-- PASSWORD -->
+                        <div class="row g-3 mb-3">
+
+                            <div class="col-md-6">
+                                <label class="form-label">Password</label>
+                                <input type="password" id="password"
+                                       name="password"
+                                       class="form-control"
+                                       required>
+                                <small id="passErr" class="text-danger"></small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Confirm Password</label>
+                                <input type="password" id="confirm_password"
+                                       name="confirm_password"
+                                       class="form-control"
+                                       required>
+                                <small id="matchErr" class="text-danger"></small>
+                            </div>
+
+                        </div>
+
+                        <!-- PIN -->
+                        <div class="mb-3">
+                            <label class="form-label">Transaction PIN</label>
+                            <input type="password" name="pin" id="pin"
+                                   class="form-control"
+                                   maxlength="6"
+                                   required
+                                   inputmode="numeric">
+                            <small id="pinErr" class="text-danger"></small>
+                            <small class="text-muted">Must be 4–6 digits</small>
+                        </div>
+
+                        <!-- ROLE -->
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+
+                            <select name="role" id="role" class="form-select" required>
+                                <option value="user">User</option>
+                                <option value="supervisor">Supervisor</option>
+                                <option value="manager">Manager</option>
+                                <option value="admin">Admin</option>
+                            </select>
+
+                            <small class="text-warning">
+                                ⚠ Admin accounts are limited (max 2 system-wide)
+                            </small>
+                        </div>
+
+                        <!-- LOCATION + PHONE -->
+                        <div class="row g-3 mb-4">
+
+                            <div class="col-md-6">
+                                <label class="form-label">Location</label>
+                                <input type="text" name="location" id="location"
+                                       class="form-control"
+                                       placeholder="City / Town"
+                                       required>
+                                <small id="locErr" class="text-danger"></small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Phone Number</label>
+                                <input type="text" name="phone_no" id="phone"
+                                       class="form-control"
+                                       placeholder="+211 or 9XXXXXXXX"
+                                       required>
+                                <small id="phoneErr" class="text-danger"></small>
+                            </div>
+
+                        </div>
+
+                        <!-- SUBMIT -->
+                        <div class="d-grid mb-3">
+                            <button class="btn btn-success btn-lg fw-bold" id="submitBtn">
+                                Create Account
+                            </button>
+                        </div>
+
+                    </form>
+
+                    <div class="text-center">
+                        <small>
+                            Already have an account?
+                            <a href="{{ url_for('auth.login') }}" class="fw-bold text-primary">
+                                Login here
+                            </a>
+                        </small>
                     </div>
+
                 </div>
-
-                <!-- Email -->
-                <div class="mb-3">
-                    <label class="form-label">Email Address</label>
-                    <input type="email" name="email" class="form-control" placeholder="example@gmail.com" required>
-                </div>
-
-                <!-- Password + Confirm Password -->
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6 col-12">
-                        <label class="form-label">Password</label>
-                        <input type="password" name="password" class="form-control" required>
-                    </div>
-                    <div class="col-md-6 col-12">
-                        <label class="form-label">Confirm Password</label>
-                        <input type="password" name="confirm_password" class="form-control" required>
-                    </div>
-                </div>
-
-                <!-- Transaction PIN -->
-                <div class="mb-3 row align-items-center">
-                    <label class="col-sm-4 col-form-label fw-semibold">Transaction PIN</label>
-                    <div class="col-sm-8 col-12 mt-2 mt-sm-0">
-                        <input type="password" name="pin" class="form-control form-control-sm" placeholder="4–6 digit PIN" maxlength="6" required pattern="\d{4,6}" title="Enter 4 to 6 digits">
-                    </div>
-                </div>
-
-                <!-- Role Dropdown -->
-                <div class="mb-3 row align-items-center">
-                    <label class="col-sm-4 col-form-label fw-semibold">Role</label>
-                    <div class="col-sm-8 col-12 mt-2 mt-sm-0">
-                        <select name="role" class="form-select" required>
-                            <option value="user" selected>Normal User</option>
-                            <option value="supervisor">Supervisor</option>
-                            <option value="manager">Manager</option>
-                        </select>
-                        <small class="text-muted">Only admin can create Admin account</small>
-                    </div>
-                </div>
-
-                <!-- Location + Phone -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6 col-12">
-                        <label class="form-label">Location</label>
-                        <input type="text" name="location" class="form-control" placeholder="City or Town" required>
-                    </div>
-                    <div class="col-md-6 col-12">
-                        <label class="form-label">Phone Number</label>
-                        <input type="text" name="phone_no" class="form-control" placeholder="+211..." required pattern="\+?\d+" title="Only digits allowed">
-                    </div>
-                </div>
-
-                <!-- Submit -->
-                <div class="d-grid mb-3">
-                    <button class="btn btn-success btn-lg">Create Account</button>
-                </div>
-
-            </form>
-
-            <div class="text-center mt-3">
-                Already have an account? <a href="{{ url_for('auth.login') }}" class="fw-bold">Login here</a>
             </div>
 
         </div>
+
     </div>
+
 </div>
 
+<!-- ================= JS VALIDATION ================= -->
+<script>
 
+const form = document.getElementById("registerForm");
+const btn = document.getElementById("submitBtn");
+
+const username = document.getElementById("username");
+const email = document.getElementById("email");
+const password = document.getElementById("password");
+const confirm_password = document.getElementById("confirm_password");
+const pin = document.getElementById("pin");
+const phone = document.getElementById("phone");
+
+function setErr(id, msg){
+    document.getElementById(id).innerText = msg;
+}
+
+function validate(){
+
+    let ok = true;
+
+    if(!/^[A-Za-z\s]{3,30}$/.test(username.value)){
+        setErr("userErr", "Username must be letters only (3–30 chars)");
+        ok = false;
+    } else setErr("userErr","");
+
+    if(!/^\S+@\S+\.\S+$/.test(email.value)){
+        setErr("emailErr", "Invalid email format");
+        ok = false;
+    } else setErr("emailErr","");
+
+    if(password.value.length < 6){
+        setErr("passErr", "Password must be at least 6 characters");
+        ok = false;
+    } else setErr("passErr","");
+
+    if(password.value !== confirm_password.value){
+        setErr("matchErr", "Passwords do not match");
+        ok = false;
+    } else setErr("matchErr","");
+
+    if(!/^\d{4,6}$/.test(pin.value)){
+        setErr("pinErr", "PIN must be 4–6 digits");
+        ok = false;
+    } else setErr("pinErr","");
+
+    if(!/^\+?\d{7,15}$/.test(phone.value)){
+        setErr("phoneErr", "Invalid phone number");
+        ok = false;
+    } else setErr("phoneErr","");
+
+    btn.disabled = !ok;
+    return ok;
+}
+
+form.addEventListener("input", validate);
+
+form.addEventListener("submit", function(e){
+    if(!validate()){
+        e.preventDefault();
+    }
+});
+
+</script>
 
 {% endblock %}

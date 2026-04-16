@@ -1,117 +1,352 @@
-# app/routes/admin.py
+import io
+from datetime import datetime
 
-from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify, abort, send_file, current_app
+import pandas as pd
+
+from flask import (
+    Blueprint, render_template, request,
+    abort, send_file, jsonify, redirect, url_for, flash
+)
+
 from flask_login import login_required, current_user
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
+from sqlalchemy.exc import SQLAlchemyError
+
 from app import db
 from app.models import User, Wallet, WalletHistory, Transaction
-from sqlalchemy import func
-from datetime import datetime
-import pandas as pd
-import io
 
+
+# =====================================================
+# SOCKET SAFE
+# =====================================================
+try:
+    from app.sockets.admin_alerts import send_admin_alert
+except Exception:
+    def send_admin_alert(message, data=None):
+        print("Socket disabled:", message, data)
+
+
+# =====================================================
+# BLUEPRINT
+# =====================================================
 admin = Blueprint('admin', __name__, url_prefix='/admin')
 
 
-# ================= SECURITY =================
+# =====================================================
+# HELPERS
+# =====================================================
+def is_admin():
+    return current_user.is_authenticated and (
+        getattr(current_user, "is_admin", False)
+        or str(getattr(current_user, "role", "")).lower() == "admin"
+    )
+
+
+def is_manager():
+    return str(getattr(current_user, "role", "")).lower() == "manager"
+
+
 def admin_required():
-    if not current_user.is_authenticated or not getattr(current_user, "is_admin", False):
+    if not (is_admin() or is_manager()):
         abort(403)
 
 
-# ================= AUTO WALLET =================
-@admin.before_app_request
-def ensure_wallet():
-    if current_user.is_authenticated and hasattr(current_user, "get_wallet"):
-        current_user.get_wallet()
+def is_ajax():
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
 
-# ================= DB DATE HELPERS =================
-def month_group():
-    if current_app.config['SQLALCHEMY_DATABASE_URI'].startswith("sqlite"):
-        return func.strftime('%Y-%m', Transaction.date)
-    return func.date_trunc('month', Transaction.date)
+def json_success(data=None, message="OK"):
+    payload = {"success": True, "message": message}
+    if data:
+        payload["data"] = data
+    return jsonify(payload)
 
 
-def day_group():
-    if current_app.config['SQLALCHEMY_DATABASE_URI'].startswith("sqlite"):
-        return func.strftime('%Y-%m-%d', Transaction.date)
-    return func.date_trunc('day', Transaction.date)
+def json_error(msg="Error", code=400):
+    return jsonify({"success": False, "message": msg}), code
 
 
-# ================= ANALYTICS =================
-@admin.route('/analytics')
+def smart_response(success=True, message="OK", data=None):
+    if is_ajax():
+        return json_success(data=data, message=message) if success else json_error(message)
+
+    flash(message, "success" if success else "danger")
+    return redirect(url_for("admin.users_list"))
+
+
+# =====================================================
+# 🏠 ADMIN DASHBOARD
+# =====================================================
+@admin.route('/')
+@login_required
+def admin_dashboard():
+    admin_required()
+
+    wallet = Wallet.query.filter_by(user_id=current_user.id).first()
+    tx = Transaction.query
+
+    return render_template(
+        "admin_dashboard.html",
+        wallet=wallet,
+        currency="SSP",
+
+        total_transactions=tx.count(),
+        total_amount=tx.with_entities(func.coalesce(func.sum(Transaction.amount), 0)).scalar(),
+        total_commission=tx.with_entities(func.coalesce(func.sum(Transaction.commission), 0)).scalar(),
+
+        months=[],
+        monthly_amounts=[],
+        dates=[],
+        counts=[],
+        active_names=[],
+        active_counts=[],
+        locations=[],
+        location_counts=[],
+        commission_locations=[],
+        commission_values=[]
+    )
+
+
+# =====================================================
+# USERS
+# =====================================================
+@admin.route('/users')
+@login_required
+def users_list():
+    admin_required()
+    users = User.query.options(joinedload(User.wallet)).all()
+    return render_template("users.html", users=users)
+
+
+@admin.route("/approve/<int:user_id>", methods=["POST"])
+@login_required
+def approve_user(user_id):
+    admin_required()
+
+    user = User.query.get_or_404(user_id)
+
+    try:
+        user.is_approved = True
+        user.active = True
+        db.session.commit()
+        return smart_response(True, "User approved")
+
+    except Exception as e:
+        db.session.rollback()
+        return smart_response(False, str(e))
+
+
+@admin.route('/users/toggle/<int:user_id>', methods=['POST'])
+@login_required
+def toggle_user(user_id):
+    admin_required()
+
+    user = User.query.get_or_404(user_id)
+
+    try:
+        user.active = not bool(user.active)
+        db.session.commit()
+
+        status = "activated" if user.active else "deactivated"
+        return smart_response(True, f"User {status}")
+
+    except Exception as e:
+        db.session.rollback()
+        return smart_response(False, str(e))
+
+
+# =====================================================
+# WALLET TOPUP
+# =====================================================
+@admin.route('/users/topup/<int:user_id>', methods=['POST'])
+@login_required
+def topup_wallet(user_id):
+    admin_required()
+
+    target_user = User.query.get_or_404(user_id)
+
+    pin = request.form.get("pin", "").strip()
+
+    try:
+        amount = float(request.form.get("amount", 0))
+    except Exception:
+        return json_error("Invalid amount")
+
+    if amount <= 0:
+        return json_error("Amount must be greater than 0")
+
+    if not current_user.check_pin(pin):
+        return json_error("Invalid PIN", 403)
+
+    try:
+        target_wallet = Wallet.query.filter_by(user_id=target_user.id).first()
+        admin_wallet = Wallet.query.filter_by(user_id=current_user.id).first()
+
+        if not target_wallet or not admin_wallet:
+            return json_error("Wallet not found", 404)
+
+        if admin_wallet.balance < amount:
+            return json_error("Insufficient admin balance", 403)
+
+        old_balance = float(target_wallet.balance or 0)
+
+        admin_wallet.balance -= amount
+        target_wallet.balance += amount
+
+        db.session.add(WalletHistory(
+            user_id=target_user.id,
+            old_balance=old_balance,
+            new_balance=target_wallet.balance,
+            amount=amount,
+            action="topup",
+            changed_by=current_user.id
+        ))
+
+        db.session.commit()
+
+        send_admin_alert("Wallet topped up", {"user": target_user.username})
+
+        return json_success({"balance": target_wallet.balance})
+
+    except SQLAlchemyError:
+        db.session.rollback()
+        return json_error("Database error", 500)
+
+
+# =====================================================
+# 🧾 RECEIPT (UPDATED: ALL USERS ALLOWED)
+# =====================================================
+@admin.route('/receipt/<int:tx_id>')
+@login_required
+def show_receipt(tx_id):
+
+    tx = Transaction.query.get_or_404(tx_id)
+
+    # ✅ Allow ALL authenticated users
+    return render_template("receipt.html", transaction=tx)
+
+
+# =====================================================
+# WALLET HISTORY
+# =====================================================
+@admin.route('/wallet-history')
+@login_required
+def wallet_history():
+    admin_required()
+    history = WalletHistory.query.order_by(WalletHistory.id.desc()).all()
+    return render_template("wallet_history.html", history=history)
+
+
+@admin.route('/wallet-history/api')
+@login_required
+def wallet_history_api():
+    admin_required()
+
+    logs = WalletHistory.query.order_by(WalletHistory.id.desc()).limit(50).all()
+
+    return jsonify([
+        {
+            "id": h.id,
+            "user": getattr(h.user, "username", "Unknown"),
+            "amount": float(h.amount or 0),
+            "action": h.action,
+            "old_balance": float(h.old_balance or 0),
+            "new_balance": float(h.new_balance or 0),
+        }
+        for h in logs
+    ])
+
+
+# =====================================================
+# ANALYTICS
+# =====================================================
+@admin.route("/analytics")
 @login_required
 def analytics():
     admin_required()
 
-    total_users = db.session.query(func.count(User.id)).scalar()
-    total_transactions = db.session.query(func.count(Transaction.id)).scalar()
+    query = Transaction.query
 
-    total_amount, total_commission = db.session.query(
-        func.coalesce(func.sum(Transaction.amount), 0),
+    # ================= DATE FILTER =================
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+
+    if start_date:
+        query = query.filter(Transaction.date >= start_date)
+
+    if end_date:
+        query = query.filter(Transaction.date <= end_date)
+
+    # ================= TOTALS =================
+    total_transactions = query.count()
+
+    total_amount = query.with_entities(
+        func.coalesce(func.sum(Transaction.amount), 0)
+    ).scalar()
+
+    total_commission = query.with_entities(
         func.coalesce(func.sum(Transaction.commission), 0)
-    ).first()
+    ).scalar()
 
     total_wallet_balance = db.session.query(
         func.coalesce(func.sum(Wallet.balance), 0)
-    ).scalar()
+    ).scalar() or 0
 
-    # MONTHLY
-    m_group = month_group()
-    monthly_data = db.session.query(
-        m_group,
-        func.coalesce(func.sum(Transaction.amount), 0)
-    ).group_by(m_group).order_by(m_group).all()
+    # ================= MONTHLY =================
+    monthly = query.with_entities(
+        func.strftime("%Y-%m", Transaction.date),
+        func.sum(Transaction.amount)
+    ).group_by(func.strftime("%Y-%m", Transaction.date)).all()
 
-    months = [str(m)[:7] for m, _ in monthly_data]
-    monthly_amounts = [float(v) for _, v in monthly_data]
+    months = [m[0] for m in monthly]
+    monthly_amounts = [float(m[1]) for m in monthly]
 
-    # DAILY
-    d_group = day_group()
-    daily_data = db.session.query(
-        d_group,
+    # ================= DAILY =================
+    daily = query.with_entities(
+        func.date(Transaction.date),
         func.count(Transaction.id)
-    ).group_by(d_group).order_by(d_group).all()
+    ).group_by(func.date(Transaction.date)).all()
 
-    dates = [str(d)[:10] for d, _ in daily_data]
-    counts = [c for _, c in daily_data]
+    dates = [str(d[0]) for d in daily]
+    counts = [d[1] for d in daily]
 
-    # TOP USERS
-    active_users = db.session.query(
-        User.username,
+    # ================= TOP USERS =================
+    users = query.with_entities(
+        Transaction.sender_cashier_name,
         func.count(Transaction.id)
-    ).join(Transaction, Transaction.sender_cashier_id == User.id)\
-     .group_by(User.username)\
+    ).group_by(Transaction.sender_cashier_name)\
      .order_by(func.count(Transaction.id).desc())\
      .limit(5).all()
 
-    active_names = [u for u, _ in active_users]
-    active_counts = [c for _, c in active_users]
+    active_names = [u[0] for u in users]
+    active_counts = [u[1] for u in users]
 
-    # LOCATION
-    location_data = db.session.query(
+    # ================= LOCATIONS =================
+    locs = query.with_entities(
         Transaction.receiver_location,
         func.count(Transaction.id)
     ).group_by(Transaction.receiver_location).all()
 
-    locations = [l or "Unknown" for l, _ in location_data]
-    location_counts = [c for _, c in location_data]
+    locations = [l[0] for l in locs]
+    location_counts = [l[1] for l in locs]
 
-    commission_data = db.session.query(
+    # ================= COMMISSION =================
+    comm = query.with_entities(
         Transaction.receiver_location,
-        func.coalesce(func.sum(Transaction.commission), 0)
+        func.sum(Transaction.commission)
     ).group_by(Transaction.receiver_location).all()
 
-    commission_locations = [l or "Unknown" for l, _ in commission_data]
-    commission_values = [float(v) for _, v in commission_data]
+    commission_locations = [c[0] for c in comm]
+    commission_values = [float(c[1] or 0) for c in comm]
 
     return render_template(
         "analytics.html",
-        total_users=total_users,
         total_transactions=total_transactions,
-        total_amount=float(total_amount),
-        total_commission=float(total_commission),
-        total_wallet_balance=float(total_wallet_balance),
+        total_amount=float(total_amount or 0),
+        total_commission=float(total_commission or 0),
+        total_wallet_balance=round(float(total_wallet_balance), 2),
+
         months=months,
         monthly_amounts=monthly_amounts,
         dates=dates,
@@ -122,201 +357,36 @@ def analytics():
         location_counts=location_counts,
         commission_locations=commission_locations,
         commission_values=commission_values,
-        currency="SSP"
+
+        start_date=start_date,
+        end_date=end_date
     )
 
 
-# ================= USERS =================
-@admin.route('/users')
-@login_required
-def users_list():
-    admin_required()
-
-    selected_location = request.args.get("location")
-
-    query = User.query.options(db.joinedload(User.wallet))
-
-    if selected_location:
-        query = query.filter(User.location == selected_location)
-
-    users = query.order_by(User.active.desc(), User.is_approved.asc()).all()
-
-    locations = [
-        l[0] for l in db.session.query(User.location).distinct().all() if l[0]
-    ]
-
-    location_stats = dict(
-        db.session.query(User.location, func.count(User.id))
-        .filter(User.location.isnot(None))
-        .group_by(User.location)
-        .all()
-    )
-
-    return render_template(
-        "users.html",
-        users=users,
-        locations=locations,
-        selected_location=selected_location,
-        location_stats=location_stats
-    )
-
-
-# ================= APPROVE =================
-@admin.route('/users/approve/<int:user_id>', methods=['POST'])
-@login_required
-def approve_user(user_id):
-    admin_required()
-
-    user = User.query.get_or_404(user_id)
-
-    if user.is_admin:
-        return redirect(url_for('admin.users_list'))
-
-    user.is_approved = True
-    user.active = True
-    db.session.commit()
-
-    flash(f"{user.username} approved", "success")
-    return redirect(url_for('admin.users_list'))
-
-
-# ================= TOGGLE =================
-@admin.route('/users/toggle/<int:user_id>', methods=['POST'])
-@login_required
-def toggle_user(user_id):
-    admin_required()
-
-    user = User.query.get_or_404(user_id)
-
-    if user.is_admin and not current_user.is_admin:
-        flash("Cannot modify admin", "danger")
-        return redirect(url_for('admin.users_list'))
-
-    user.active = not user.active
-    db.session.commit()
-
-    flash("User status updated", "success")
-    return redirect(url_for('admin.users_list'))
-
-
-# ================= TOPUP =================
-@admin.route('/users/topup/<int:user_id>', methods=['POST'])
-@login_required
-def topup_wallet(user_id):
-    admin_required()
-
-    user = User.query.get_or_404(user_id)
-
-    try:
-        amount = float(request.form.get("amount", 0))
-        if amount <= 0:
-            raise ValueError
-    except:
-        return jsonify({"success": False, "error": "Invalid amount"}), 400
-
-    try:
-        admin_wallet = current_user.get_wallet()
-        target_wallet = user.get_wallet()
-
-        if user.id == current_user.id:
-            admin_wallet.balance += amount
-        else:
-            if admin_wallet.balance < amount:
-                return jsonify({"success": False, "error": "Insufficient balance"}), 400
-
-            admin_wallet.balance -= amount
-            target_wallet.balance += amount
-
-        db.session.add(WalletHistory(
-            user_id=user.id,
-            changed_by=current_user.id,
-            amount=amount,
-            action="topup",
-            created_at=datetime.utcnow()
-        ))
-
-        db.session.commit()
-
-        return jsonify({
-            "success": True,
-            "user_balance": target_wallet.balance,
-            "admin_balance": admin_wallet.balance
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-# ================= WALLET HISTORY =================
-@admin.route('/wallet-history')
-@login_required
-def wallet_history():
-    admin_required()
-
-    search = request.args.get("user")
-
-    query = WalletHistory.query
-
-    if search:
-        query = query.join(User).filter(User.username.ilike(f"%{search}%"))
-
-    history = query.order_by(WalletHistory.id.desc()).all()
-
-    return render_template("wallet_history.html", history=history)
-
-
-# ================= DELETE HISTORY =================
-@admin.route('/wallet-history/delete/<int:id>', methods=['POST'])
-@login_required
-def delete_wallet_history(id):
-    admin_required()
-
-    history = WalletHistory.query.get_or_404(id)
-
-    if history.action == "transfer":
-        flash("Protected record cannot be deleted", "danger")
-        return redirect(url_for("admin.wallet_history"))
-
-    db.session.delete(history)
-    db.session.commit()
-
-    flash("Record deleted", "success")
-    return redirect(url_for("admin.wallet_history"))
-
-
-# ================= EXPORT =================
+# =====================================================
+# EXPORT
+# =====================================================
 @admin.route('/download-excel')
 @login_required
 def download_excel():
     admin_required()
 
-    transactions = Transaction.query.all()
+    tx = Transaction.query.all()
 
-    data = [{
+    df = pd.DataFrame([{
         "Sender": t.sender_name,
         "Receiver": t.receiver_name,
         "Amount": float(t.amount or 0),
         "Commission": float(t.commission or 0),
         "Status": t.status,
         "Date": t.date.strftime("%Y-%m-%d") if t.date else ""
-    } for t in transactions]
-
-    df = pd.DataFrame(data)
+    } for t in tx])
 
     output = io.BytesIO()
-    df.to_excel(output, index=False, engine="openpyxl")
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False)
+
     output.seek(0)
 
     return send_file(output, download_name="transactions.xlsx", as_attachment=True)
-
-
-# ================= RECEIPT =================
-@admin.route('/receipt/<int:tx_id>')
-@login_required
-def show_receipt(tx_id):
-    admin_required()
-
-    t = Transaction.query.get_or_404(tx_id)
-
-    return render_template("receipt.html", transaction=t, currency="SSP")

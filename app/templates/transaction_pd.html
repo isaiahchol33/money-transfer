@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Transactions Report</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: center;
+        }
+
+        th {
+            background: #f3f4f6;
+        }
+
+        .amount {
+            font-weight: bold;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Money Transfer - Transactions Report</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Sender</th>
+            <th>Receiver</th>
+            <th>Phone</th>
+            <th>Amount</th>
+            <th>Commission</th>
+            <th>Status</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for t in transactions %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ t.sender_name }}</td>
+            <td>{{ t.receiver_name }}</td>
+            <td>{{ t.receiver_phone }}</td>
+
+            <td class="amount">
+                SSP {{ (t.amount or 0) | round(2) }}
+            </td>
+
+            <td>
+                SSP {{ (t.commission or 0) | round(2) }}
+            </td>
+
+            <td>{{ t.status }}</td>
+
+            <td>
+                {{ t.date.strftime('%Y-%m-%d') if t.date else '' }}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+</body>
+</html>

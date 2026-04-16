@@ -4,14 +4,13 @@
 {% block content %}
 <div class="container-fluid mt-3">
 
-    <!-- HEADER (MOBILE FRIENDLY) -->
+    <!-- HEADER -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
 
         <h4 class="fw-bold text-primary mb-0">
             📜 Recent Transactions
         </h4>
 
-        <!-- LIVE SEARCH (MOBILE COMPACT) -->
         <div class="ms-md-auto w-100" style="max-width: 280px;">
             <input type="text"
                    id="liveSearch"
@@ -21,198 +20,182 @@
 
     </div>
 
-    <!-- TABLE CARD -->
-    <div class="card shadow-sm border-0 rounded-3">
-        <div class="card-body p-2">
+    <!-- TABLE -->
+    <div id="tableWrapper">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-body p-2">
 
-            {% if transactions.items %}
-            <div class="table-responsive">
+                {% if transactions.items %}
 
-                <table class="table table-hover table-sm align-middle text-center mb-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm align-middle text-center mb-0">
 
-                    <!-- HEADER -->
-                    <thead class="table-dark small">
-                        <tr>
-                            <th>#</th>
-                            <th>Sender</th>
-                            <th class="d-none d-md-table-cell">Sender Location</th>
-                            <th>Receiver</th>
-                            <th class="d-none d-md-table-cell">Receiver Location</th>
-                            <th>Phone</th>
-                            <th>Amount</th>
-                            <th class="d-none d-md-table-cell">Commission</th>
-                            <th>Status</th>
-                            <th class="d-none d-md-table-cell">Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
+                        <thead class="table-dark small">
+                            <tr>
+                                <th>#</th>
+                                <th>Sender</th>
+                                <th class="d-none d-md-table-cell">Sender Location</th>
+                                <th>Receiver</th>
+                                <th class="d-none d-md-table-cell">Receiver Location</th>
+                                <th>Phone</th>
+                                <th>Amount</th>
+                                <th class="d-none d-md-table-cell">Commission</th>
+                                <th>Status</th>
+                                <th class="d-none d-md-table-cell">Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
 
-                    <!-- BODY -->
-                    <tbody class="small">
-                        {% for t in transactions.items %}
-                        <tr>
+                        <tbody id="transactionBody" class="small">
 
-                            <td>
-                                {{ loop.index + (transactions.page - 1) * transactions.per_page }}
-                            </td>
+                            {% for t in transactions.items %}
+                            <tr>
 
-                            <td>{{ t.sender_name or '-' }}</td>
+                                <td>{{ loop.index + (transactions.page - 1) * transactions.per_page }}</td>
 
-                            <td class="text-muted d-none d-md-table-cell">
-                                {{ t.sender_location or '-' }}
-                            </td>
+                                <td>{{ t.sender_name or '-' }}</td>
+                                <td class="d-none d-md-table-cell">{{ t.sender_location or '-' }}</td>
 
-                            <td>{{ t.receiver_name or '-' }}</td>
+                                <td>{{ t.receiver_name or '-' }}</td>
+                                <td class="d-none d-md-table-cell">{{ t.receiver_location or '-' }}</td>
 
-                            <td class="text-muted d-none d-md-table-cell">
-                                {{ t.receiver_location or '-' }}
-                            </td>
+                                <td>{{ t.receiver_phone or '-' }}</td>
 
-                            <td>{{ t.receiver_phone or '-' }}</td>
+                                <td class="text-success fw-bold">
+                                    SSP {{ (t.amount or 0) | round(2) }}
+                                </td>
 
-                            <td class="text-success fw-bold">
-                                SSP {{ (t.amount or 0) | round(2) }}
-                            </td>
+                                <td class="text-warning d-none d-md-table-cell">
+                                    SSP {{ (t.commission or 0) | round(2) }}
+                                </td>
 
-                            <td class="text-warning d-none d-md-table-cell">
-                                SSP {{ (t.commission or 0) | round(2) }}
-                            </td>
-
-                            <!-- STATUS -->
-                            <td>
-                                {% if t.status == 'Pending' %}
-                                    <span class="badge bg-warning text-dark">Pending</span>
-                                {% elif t.status == 'Paid' %}
-                                    <span class="badge bg-success">Paid</span>
-                                {% elif t.status == 'Completed' %}
-                                    <span class="badge bg-primary">Completed</span>
-                                {% elif t.status == 'Failed' %}
-                                    <span class="badge bg-danger">Failed</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">
-                                        {{ t.status or 'Unknown' }}
-                                    </span>
-                                {% endif %}
-                            </td>
-
-                            <td class="d-none d-md-table-cell">
-                                {{ t.date.strftime('%Y-%m-%d %H:%M') if t.date else '-' }}
-                            </td>
-
-                            <!-- ACTIONS -->
-                            <td>
-                                <div class="d-flex flex-wrap justify-content-center gap-1">
-
-                                    {% if current_user.role == 'admin' or t.sender_cashier_id == current_user.id %}
-                                        <a href="{{ url_for('transfer.edit_transaction', transaction_id=t.id) }}"
-                                           class="btn btn-sm btn-outline-primary">
-                                            ✏️
-                                        </a>
+                                <td>
+                                    {% if t.status == 'Pending' %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    {% elif t.status == 'Paid' %}
+                                        <span class="badge bg-success">Paid</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ t.status or 'Unknown' }}</span>
                                     {% endif %}
+                                </td>
 
-                                    {% if t.status != 'Paid' and current_user.location == t.receiver_location %}
+                                <td class="d-none d-md-table-cell">
+                                    {{ t.date.strftime('%Y-%m-%d %H:%M') if t.date else '-' }}
+                                </td>
+
+                                <!-- ACTIONS -->
+                                <td>
+                                    <div class="d-flex gap-1 justify-content-center">
+
+                                        {% set role = (current_user.role or '').lower() %}
+                                        {% set is_admin = role == 'admin' %}
+                                        {% set is_manager = role == 'manager' %}
+                                        {% set is_sender = t.sender_cashier_id == current_user.id %}
+                                        {% set is_receiver = t.receiver_cashier_id is defined and t.receiver_cashier_id == current_user.id %}
+
+                                        <!-- ================= EDIT (FIXED: USE POST FORM) ================= -->
+                                        {% if (is_admin or is_manager or is_sender) and not is_receiver %}
+                                        <form method="POST"
+                                              action="{{ url_for('transfer.edit_transaction', transaction_id=t.id) }}">
+                                            
+                                            {% if csrf_token is defined %}
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            {% endif %}
+
+                                            <!-- Optional hidden fields (or open modal later) -->
+                                            <input type="hidden" name="receiver_name" value="{{ t.receiver_name }}">
+                                            <input type="hidden" name="receiver_phone" value="{{ t.receiver_phone }}">
+                                            <input type="hidden" name="amount" value="{{ t.amount }}">
+
+                                            <button class="btn btn-sm btn-outline-primary" title="Edit">
+                                                ✏️
+                                            </button>
+                                        </form>
+                                        {% endif %}
+
+                                        <!-- ================= PAY ================= -->
+                                        {% if t.status != 'Paid' and current_user.location == t.receiver_location %}
                                         <form method="POST"
                                               action="{{ url_for('transfer.pay_transaction', transaction_id=t.id) }}">
-                                            <button type="submit"
-                                                    class="btn btn-sm btn-success"
-                                                    onclick="return confirm('Confirm payment?')">
+                                            {% if csrf_token is defined %}
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            {% endif %}
+                                            <button class="btn btn-sm btn-success" title="Pay">
                                                 💰
                                             </button>
                                         </form>
-                                    {% endif %}
+                                        {% endif %}
 
-                                    {% if current_user.location == t.sender_location %}
+                                        <!-- ================= RECEIPT (ALLOWED FOR ALL RELATED USERS) ================= -->
+                                        {% if is_admin or is_manager or is_sender or is_receiver %}
                                         <a href="{{ url_for('admin.show_receipt', tx_id=t.id) }}"
                                            target="_blank"
-                                           class="btn btn-sm btn-outline-secondary">
+                                           class="btn btn-sm btn-outline-secondary"
+                                           title="Receipt">
                                             🧾
                                         </a>
-                                    {% endif %}
+                                        {% endif %}
 
-                                </div>
-                            </td>
+                                    </div>
+                                </td>
 
-                        </tr>
-                        {% endfor %}
-                    </tbody>
+                            </tr>
+                            {% endfor %}
 
-                </table>
+                        </tbody>
+
+                    </table>
+                </div>
+
+                {% else %}
+                <div class="text-center py-4 text-muted small">
+                    <h6>No transactions found</h6>
+                    <p>Try adjusting search or send a new transfer 💸</p>
+                </div>
+                {% endif %}
 
             </div>
-
-            <!-- PAGINATION -->
-            <nav class="mt-3">
-                <ul class="pagination justify-content-center pagination-sm flex-wrap">
-
-                    {% if transactions.has_prev %}
-                        <li class="page-item">
-                            <a class="page-link"
-                               href="{{ url_for('transfer.recent_transactions_view',
-                                                page=transactions.prev_num,
-                                                search=search) }}">
-                                Previous
-                            </a>
-                        </li>
-                    {% endif %}
-
-                    <li class="page-item disabled">
-                        <span class="page-link small">
-                            Page {{ transactions.page }} of {{ transactions.pages }}
-                        </span>
-                    </li>
-
-                    {% if transactions.has_next %}
-                        <li class="page-item">
-                            <a class="page-link"
-                               href="{{ url_for('transfer.recent_transactions_view',
-                                                page=transactions.next_num,
-                                                search=search) }}">
-                                Next
-                            </a>
-                        </li>
-                    {% endif %}
-
-                </ul>
-            </nav>
-
-            {% else %}
-            <!-- EMPTY -->
-            <div class="text-center py-4 text-muted small">
-                <h6>No transactions found</h6>
-                <p>Try adjusting your search or send a new transfer 💸</p>
-                <a href="{{ url_for('transfer.transfer_money') }}"
-                   class="btn btn-primary btn-sm">
-                    Send Money
-                </a>
-            </div>
-            {% endif %}
-
         </div>
     </div>
-
 </div>
 
-<!-- ================= LIVE SEARCH SCRIPT ================= -->
+<!-- LIVE SEARCH -->
 <script>
-document.addEventListener("DOMContentLoaded", function () {
+document.getElementById("liveSearch").addEventListener("input", function () {
+    let filter = this.value.toLowerCase();
 
-    const input = document.getElementById("liveSearch");
+    document.querySelectorAll("#transactionBody tr").forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(filter) ? "" : "none";
+    });
+});
+</script>
 
-    input.addEventListener("input", function () {
+<!-- AUTO REFRESH -->
+<script>
+let lastHTML = "";
 
-        let filter = this.value.toLowerCase();
-
-        document.querySelectorAll("tbody tr").forEach(row => {
-
-            let text = row.innerText.toLowerCase();
-
-            row.style.display = text.includes(filter) ? "" : "none";
-
+async function refreshTransactions() {
+    try {
+        const res = await fetch(window.location.href, {
+            headers: { "X-Requested-With": "XMLHttpRequest" }
         });
 
-    });
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
 
-});
+        const newBody = doc.querySelector("#transactionBody");
+
+        if (newBody && newBody.innerHTML !== lastHTML) {
+            document.querySelector("#transactionBody").innerHTML = newBody.innerHTML;
+            lastHTML = newBody.innerHTML;
+        }
+
+    } catch (err) {
+        console.log("Refresh error:", err);
+    }
+}
+
+setInterval(refreshTransactions, 5000);
 </script>
 
 {% endblock %}

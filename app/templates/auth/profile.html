@@ -1,56 +1,117 @@
 {% extends 'base.html' %}
+
 {% block content %}
-<div class="container mt-5">
-    <div class="card shadow-lg p-4 mx-auto" style="max-width: 500px; width: 100%;">
-        <h3 class="text-center mb-4">Edit Profile</h3>
+<div class="container mt-3">
 
-        <form method="POST" enctype="multipart/form-data">
-            <!-- Profile Image -->
-            <div class="mb-3 text-center">
-                <img src="{{ url_for('static', filename='uploads/' + (current_user.profile_image or 'avatar.png')) }}"  
-                     class="rounded-circle img-fluid" style="max-width:120px; height:auto;" alt="Profile Photo">
+    <div class="card shadow p-3 mx-auto" style="max-width: 420px;">
+
+        <!-- HEADER -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">Edit Profile</h6>
+
+            <!-- CLOSE BUTTON -->
+            <button type="button"
+                    class="btn btn-sm btn-light"
+                    onclick="goBack()">
+                ✖
+            </button>
+        </div>
+
+        <form method="POST"
+              enctype="multipart/form-data"
+              action="{{ url_for('auth.profile') }}">
+
+            <!-- PROFILE IMAGE -->
+            <div class="text-center mb-3">
+                <img id="preview"
+                     src="{{ url_for('static', filename='uploads/' + (current_user.profile_image if current_user.profile_image else 'avatar.png')) }}"
+                     onerror="this.src='{{ url_for('static', filename='uploads/avatar.png') }}';"
+                     class="rounded-circle shadow-sm"
+                     style="width:90px; height:90px; object-fit:cover;">
             </div>
 
-            <!-- Upload Profile Photo -->
-            <div class="mb-3">
-                <label class="form-label">Upload Profile Photo</label>
-                <input type="file" name="profile_image" class="form-control" accept="image/*">
+            <!-- UPLOAD -->
+            <div class="mb-2">
+                <input type="file"
+                       name="profile_image"
+                       class="form-control form-control-sm"
+                       accept="image/*"
+                       onchange="previewImage(event)">
             </div>
 
-            <!-- Username -->
-            <div class="mb-3">
-                <label class="form-label">Username</label>
-                <input type="text" name="username" class="form-control" value="{{ current_user.username }}" required>
+            <!-- USERNAME -->
+            <div class="mb-2">
+                <input type="text"
+                       name="username"
+                       class="form-control form-control-sm"
+                       value="{{ current_user.username }}"
+                       required
+                       pattern="[A-Za-z\s]+"
+                       title="Only letters allowed"
+                       oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'');">
             </div>
 
-            <!-- Location -->
-            <div class="mb-3">
-                <label class="form-label">Location</label>
-                <input type="text" name="location" class="form-control" value="{{ current_user.location }}">
+            <!-- LOCATION -->
+            <div class="mb-2">
+                <input type="text"
+                       name="location"
+                       class="form-control form-control-sm"
+                       value="{{ current_user.location or '' }}">
             </div>
 
-            <!-- Update Button -->
+            <!-- ACTION -->
             <div class="d-grid mt-3">
-                <button class="btn btn-success btn-lg">Update Profile</button>
+                <button class="btn btn-success btn-sm">
+                    Save Changes
+                </button>
             </div>
+
         </form>
+
     </div>
 </div>
 
-<style>
-/* Responsive adjustments */
-@media (max-width: 576px) {
-    .card {
-        padding: 2rem 1rem;
+<!-- ================= SCRIPTS ================= -->
+
+<script>
+// ✅ IMAGE PREVIEW
+function previewImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(){
+        document.getElementById('preview').src = reader.result;
     }
-    h3 {
-        font-size: 1.5rem;
-    }
-    .btn-lg {
-        padding: 0.75rem 1rem;
-        font-size: 1rem;
+    reader.readAsDataURL(file);
+}
+
+// ✅ SAFE CLOSE (works even without modal)
+function goBack() {
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        window.location.href = "/";
     }
 }
-</style>
-{% endblock %}
 
+// ✅ AUTO CLOSE / REFRESH AFTER SUCCESS
+{% if success %}
+    setTimeout(function () {
+
+        // try modal close (if exists)
+        let modalEl = document.getElementById('profileModal');
+
+        if (modalEl && typeof bootstrap !== "undefined") {
+            let modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        // always refresh
+        location.reload();
+
+    }, 800);
+{% endif %}
+</script>
+
+{% endblock %}

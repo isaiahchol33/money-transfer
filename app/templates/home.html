@@ -1,41 +1,166 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-center align-items-center min-vh-100 gradient-bg">
 
-    <div class="glass-card text-center p-4 p-md-5 rounded-4">
+<style>
+/* ================= BACKGROUND ================= */
+.gradient-bg {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #eef2ff, #f8fafc);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
 
-        <!-- LOGO / TITLE -->
-        <h1 class="fw-bold mb-2 display-5">💳 Money Transfer</h1>
-        <p class="text-muted small mb-4">
-            Fast, secure, and easy money transfers anywhere, anytime
-        </p>
+/* ================= GLASS CARD ================= */
+.glass-card {
+    max-width: 560px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.08);
+    border-radius: 24px;
+    padding: 40px 30px;
+    text-align: center;
+    transition: 0.3s ease;
+}
 
-        <!-- IMAGE -->
-        <img src="{{ url_for('static', filename='images/bank-card.png') }}" 
-             alt="Money Transfer" 
-             class="img-fluid mb-4 main-image">
+.glass-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.12);
+}
 
-        <!-- ACTION BUTTONS -->
-        <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
-            <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg rounded-pill px-4 py-2 shadow-sm w-100 w-sm-auto">
-                Login
-            </a>
-            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-lg rounded-pill px-4 py-2 shadow-sm w-100 w-sm-auto">
-                Register
-            </a>
+/* ================= TITLE ================= */
+.title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.subtitle {
+    font-size: 0.95rem;
+    color: #64748b;
+    margin-bottom: 25px;
+}
+
+/* ================= ICON ================= */
+.title-icon {
+    font-size: 2rem;
+    background: linear-gradient(135deg, #4f46e5, #3b82f6);
+    color: white;
+    padding: 10px;
+    border-radius: 14px;
+}
+
+/* ================= BUTTONS ================= */
+.btn-primary {
+    background: linear-gradient(135deg, #4f46e5, #3b82f6);
+    border: none;
+    border-radius: 888px;
+    padding: 12px 24px;
+    font-weight: 600;
+    transition: 0.25s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #4338ca, #2563eb);
+}
+
+.btn-outline-primary {
+    border: 1.5px solid #6366f1;
+    color: #4f46e5;
+    border-radius: 999px;
+    padding: 12px 24px;
+    font-weight: 600;
+}
+
+.btn-outline-primary:hover {
+    background: #4f46e5;
+    color: #fff;
+}
+
+/* ================= FEATURES ================= */
+.features {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.feature {
+    background: #f1f5f9;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    color: #334155;
+    font-weight: 500;
+}
+
+/* ================= DIVIDER ================= */
+.divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+    margin: 20px 0;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 576px) {
+    .glass-card {
+        padding: 25px 18px;
+    }
+
+    .title {
+        font-size: 1.6rem;
+    }
+}
+</style>
+
+<div class="gradient-bg">
+
+    <div class="glass-card">
+
+        <!-- TITLE -->
+        <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
+            <div class="title-icon">💸</div>
+            <div class="title">Money Transfer</div>
         </div>
 
-        <!-- FEATURES / BADGES -->
-        <div class="d-flex justify-content-center gap-2 flex-wrap mt-3">
-            <span class="badge feature-badge">⚡ Fast</span>
-            <span class="badge feature-badge">🔒 Secure</span>
-            <span class="badge feature-badge">📊 Track</span>
+        <!-- SUBTITLE -->
+        <div class="subtitle">
+            Send and receive money instantly with security you can trust.
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+
+            <a href="{{ url_for('auth.login') }}"
+               class="btn btn-primary w-100 w-sm-auto">
+                Login
+            </a>
+
+            <a href="{{ url_for('auth.register') }}"
+               class="btn btn-outline-primary w-100 w-sm-auto">
+                Create Account
+            </a>
+
+        </div>
+
+        <!-- DIVIDER -->
+        <div class="divider"></div>
+
+        <!-- FEATURES -->
+        <div class="features">
+            <div class="feature">⚡ Instant Transfers</div>
+            <div class="feature">🔒 Bank-Level Security</div>
+            <div class="feature">📊 Real-time Tracking</div>
         </div>
 
     </div>
 
 </div>
-
 
 {% endblock %}

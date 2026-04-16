@@ -3,64 +3,115 @@
 {% block content %}
 <div class="container mt-4">
 
-    <!-- HEADER -->
+    <!-- ================= HEADER ================= -->
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3 class="mb-0">📊 Admin Dashboard</h3>
 
         <!-- FILTERS -->
         <form method="GET" class="d-flex align-items-center gap-2 flex-wrap">
-            <input type="date" name="start_date" value="{{ start_date }}" class="form-control form-control-sm date-input">
-            <input type="date" name="end_date" value="{{ end_date }}" class="form-control form-control-sm date-input">
-            <select name="currency" class="form-select form-select-sm" style="width: 80px;">
+
+            <input type="date" name="start_date"
+                   value="{{ start_date | default('', true) }}"
+                   class="form-control form-control-sm date-input">
+
+            <input type="date" name="end_date"
+                   value="{{ end_date | default('', true) }}"
+                   class="form-control form-control-sm date-input">
+
+            <select name="currency" class="form-select form-select-sm" style="width: 90px;">
                 <option value="USD" {% if currency == 'USD' %}selected{% endif %}>USD</option>
                 <option value="SSP" {% if currency == 'SSP' %}selected{% endif %}>SSP</option>
             </select>
+
             <button type="submit" class="btn btn-primary btn-sm">Filter</button>
         </form>
     </div>
 
-    <!-- ACTION BUTTONS -->
+    <!-- ================= ACTION BUTTONS ================= -->
     <div class="mb-3 d-flex flex-wrap gap-2">
         <a href="{{ url_for('admin.download_excel') }}" class="btn btn-success btn-sm">📥 Export Excel</a>
         <a href="{{ url_for('admin.users_list') }}" class="btn btn-info btn-sm">👥 Users</a>
         <a href="{{ url_for('admin.analytics') }}" class="btn btn-dark btn-sm">📊 Analytics</a>
-        <a href="{{ url_for('admin.wallet_history') }}" class="btn btn-dark btn-sm">📜 Wallet History</a>
+        <a href="{{ url_for('transfer.recent_transactions_view') }}" class="btn btn-secondary btn-sm">📜 Transactions</a>
     </div>
 
-    <!-- SUMMARY CARDS -->
+    <!-- ================= SUMMARY CARDS ================= -->
     <div class="row g-2 mb-4">
-        {% set summary_cards = [
-            {'title': 'Wallet Balance', 'value': wallet.balance if wallet else 0, 'icon': '💰', 'color': 'text-success'},
-            {'title': 'Transactions', 'value': total_transactions|default(0), 'icon': '📈', 'color': 'text-primary'},
-            {'title': 'Total Amount', 'value': total_amount|default(0), 'icon': '💸', 'color': 'text-info'},
-            {'title': 'Commission', 'value': total_commission|default(0), 'icon': '⚙️', 'color': 'text-warning'}
-        ] %}
 
-        {% for card in summary_cards %}
+        <!-- WALLET -->
         <div class="col-12 col-sm-6 col-md-3">
-            <div class="card shadow-sm text-center py-2 px-1 summary-card position-relative">
-                <div class="d-flex justify-content-center align-items-center gap-2 mb-1 flex-wrap">
-                    <span style="font-size: 1.2rem;">{{ card.icon }}</span>
-                    <h6 class="mb-0" style="font-size:0.85rem">{{ card.title }}</h6>
-                </div>
-                <h5 class="{{ card.color }} fw-bold mb-1" style="font-size:1rem;">{{ card.value }}</h5>
+            <div class="card shadow-sm text-center py-2 px-2 summary-card">
 
-                <!-- ADMIN INLINE TOP-UP -->
-                {% if current_user.role == 'admin' and card.title == 'Wallet Balance' %}
-                <form method="POST" class="d-flex justify-content-center align-items-center gap-1 mt-1 flex-wrap">
-                    <input type="number" name="topup_amount" class="form-control form-control-sm" placeholder="Amount" step="0.01" min="1" style="width:80px;">
-                    <button type="submit" class="btn btn-success btn-sm py-0 px-2">Top-up</button>
+                <div class="mb-1">
+                    <span>💰</span>
+                    <small class="d-block">Wallet Balance</small>
+                </div>
+
+                <h5 class="text-success fw-bold">
+                    {{ "%.2f"|format(wallet.balance if wallet else 0) }} {{ currency }}
+                </h5>
+
+                <!-- TOPUP (ADMIN ONLY SAFE) -->
+                {% if current_user.role == 'admin' %}
+                <form method="POST"
+                      action="{{ url_for('admin.topup_wallet', user_id=current_user.id) }}"
+                      class="d-flex justify-content-center gap-1 mt-2 flex-wrap">
+
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <input type="number"
+                           name="amount"
+                           class="form-control form-control-sm"
+                           placeholder="Amount"
+                           step="0.01"
+                           min="1"
+                           style="width:90px;">
+
+                    <button class="btn btn-success btn-sm px-2">+</button>
                 </form>
                 {% endif %}
+
             </div>
         </div>
-        {% endfor %}
+
+        <!-- TRANSACTIONS -->
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="card shadow-sm text-center py-2 px-2 summary-card">
+                <span>📈</span>
+                <small class="d-block">Transactions</small>
+                <h5 class="text-primary fw-bold">
+                    {{ total_transactions | default(0, true) }}
+                </h5>
+            </div>
+        </div>
+
+        <!-- TOTAL AMOUNT -->
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="card shadow-sm text-center py-2 px-2 summary-card">
+                <span>💸</span>
+                <small class="d-block">Total Amount</small>
+                <h5 class="text-info fw-bold">
+                    {{ "%.2f"|format(total_amount | default(0, true)) }} {{ currency }}
+                </h5>
+            </div>
+        </div>
+
+        <!-- COMMISSION -->
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="card shadow-sm text-center py-2 px-2 summary-card">
+                <span>⚙️</span>
+                <small class="d-block">Commission</small>
+                <h5 class="text-warning fw-bold">
+                    {{ "%.2f"|format(total_commission | default(0, true)) }} {{ currency }}
+                </h5>
+            </div>
+        </div>
+
     </div>
 
-    <!-- CHARTS -->
+    <!-- ================= CHARTS ================= -->
     <div class="row g-4">
 
-        <!-- Monthly Income -->
         <div class="col-12 col-lg-4">
             <div class="card p-3 shadow-sm">
                 <h6>Monthly Income</h6>
@@ -68,7 +119,6 @@
             </div>
         </div>
 
-        <!-- Daily Transactions -->
         <div class="col-12 col-lg-4">
             <div class="card p-3 shadow-sm">
                 <h6>Daily Transactions</h6>
@@ -76,7 +126,6 @@
             </div>
         </div>
 
-        <!-- Top Users -->
         <div class="col-12 col-lg-4">
             <div class="card p-3 shadow-sm">
                 <h6>Top Users</h6>
@@ -84,17 +133,13 @@
             </div>
         </div>
 
-        <!-- Transactions by Location -->
         <div class="col-12 col-lg-6">
-            <div class="card p-3 shadow-sm text-center">
+            <div class="card p-3 shadow-sm">
                 <h6>Transactions by Location</h6>
-                <div style="height: 250px; width: 100%; position: relative;">
-                    <canvas id="locationChart"></canvas>
-                </div>
+                <canvas id="locationChart"></canvas>
             </div>
         </div>
 
-        <!-- Commission by Location -->
         <div class="col-12 col-lg-6">
             <div class="card p-3 shadow-sm">
                 <h6>Commission by Location</h6>
@@ -103,73 +148,75 @@
         </div>
 
     </div>
+
 </div>
 
-<!-- CUSTOM STYLE -->
+<!-- ================= STYLE ================= -->
 <style>
 .summary-card {
-    height: auto;
-    transition: transform 0.2s;
+    transition: 0.2s;
     border-radius: 0.5rem;
 }
-.summary-card:hover { transform: translateY(-2px); }
-.date-input { width: 130px !important; min-width: 100px; }
-
+.summary-card:hover {
+    transform: translateY(-2px);
+}
+.date-input { width: 130px; }
 @media (max-width: 576px) {
-    .date-input { width: 100% !important; }
-    .d-flex.flex-wrap.gap-2 { flex-direction: column; }
-    .d-flex.justify-content-between.align-items-center { flex-direction: column; align-items: flex-start; gap: 10px; }
-    .summary-card h6 { font-size: 0.8rem; }
-    .summary-card h5 { font-size: 0.9rem; }
+    .date-input { width: 100%; }
 }
 </style>
 
-<!-- CHART JS -->
+<!-- ================= CHART JS SAFE ================= -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
-// Monthly Income
-new Chart(document.getElementById("monthlyChart"), {
+function safe(x){ return Array.isArray(x) ? x : []; }
+
+const months = safe({{ months | default([]) | tojson }});
+const monthlyAmounts = safe({{ monthly_amounts | default([]) | tojson }});
+const dates = safe({{ dates | default([]) | tojson }});
+const counts = safe({{ counts | default([]) | tojson }});
+const activeNames = safe({{ active_names | default([]) | tojson }});
+const activeCounts = safe({{ active_counts | default([]) | tojson }});
+const locations = safe({{ locations | default([]) | tojson }});
+const locationCounts = safe({{ location_counts | default([]) | tojson }});
+const commissionLocations = safe({{ commission_locations | default([]) | tojson }});
+const commissionValues = safe({{ commission_values | default([]) | tojson }});
+
+function makeChart(id, config){
+    const el = document.getElementById(id);
+    if (!el) return;
+    new Chart(el, config);
+}
+
+makeChart("monthlyChart", {
     type: 'bar',
-    data: {
-        labels: {{ (months | default([])) | tojson }},
-        datasets: [{ label: 'Income', data: {{ (monthly_amounts | default([])) | tojson }}, backgroundColor: 'rgba(54,162,235,0.6)' }]
-    }
+    data: { labels: months, datasets: [{ label: 'Income', data: monthlyAmounts }] },
+    options: { responsive: true }
 });
 
-// Daily Transactions
-new Chart(document.getElementById("dailyChart"), {
+makeChart("dailyChart", {
     type: 'line',
-    data: {
-        labels: {{ (dates | default([])) | tojson }},
-        datasets: [{ label: 'Transactions', data: {{ (counts | default([])) | tojson }}, borderColor: 'rgba(75,192,192,1)', fill: true }]
-    }
+    data: { labels: dates, datasets: [{ label: 'Transactions', data: counts }] },
+    options: { responsive: true }
 });
 
-// Top Users
-new Chart(document.getElementById("activeUsersChart"), {
+makeChart("activeUsersChart", {
     type: 'bar',
-    data: {
-        labels: {{ (active_names | default([])) | tojson }},
-        datasets: [{ label: 'Users', data: {{ (active_counts | default([])) | tojson }}, backgroundColor: 'rgba(255,206,86,0.6)' }]
-    }
+    data: { labels: activeNames, datasets: [{ label: 'Users', data: activeCounts }] },
+    options: { responsive: true }
 });
 
-// Transactions by Location
-new Chart(document.getElementById("locationChart"), {
+makeChart("locationChart", {
     type: 'pie',
-    data: {
-        labels: {{ (locations | default([])) | tojson }},
-        datasets: [{ data: {{ (location_counts | default([])) | tojson }} }]
-    }
+    data: { labels: locations, datasets: [{ data: locationCounts }] },
+    options: { responsive: true }
 });
 
-// Commission by Location
-new Chart(document.getElementById("commissionChart"), {
+makeChart("commissionChart", {
     type: 'bar',
-    data: {
-        labels: {{ (commission_locations | default([])) | tojson }},
-        datasets: [{ label: 'Commission', data: {{ (commission_values | default([])) | tojson }}, backgroundColor: 'rgba(255,159,64,0.6)' }]
-    }
+    data: { labels: commissionLocations, datasets: [{ label: 'Commission', data: commissionValues }] },
+    options: { responsive: true }
 });
 </script>
 

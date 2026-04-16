@@ -1,54 +1,37 @@
 {% extends "base.html" %}
-
 {% block content %}
+
 <div class="container mt-4">
 
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+
         <div>
-            <h4 class="fw-bold mb-0">👥 Users Management</h4>
+            <h4 class="fw-bold mb-0">🛂 Users Management</h4>
             <small class="text-muted">Manage users, wallets, and permissions</small>
         </div>
 
         <div class="d-flex gap-2 align-items-center flex-wrap">
-            <span class="badge bg-success p-2 fs-7">
+            <span class="badge bg-success p-2">
                 💰 Balance:
-                <span id="admin-wallet">
-                    {{ (current_user.get_wallet().balance if current_user.get_wallet() else 0) | round(2) }} SSP
-                </span>
+                {{ (current_user.wallet.balance if current_user.wallet else 0) | round(2) }} SSP
             </span>
 
-            <a href="{{ url_for('admin.analytics') }}" class="btn btn-primary btn-sm shadow-sm fs-7">
+            <a href="{{ url_for('admin.analytics') }}" class="btn btn-primary btn-sm">
                 📊 Dashboard
             </a>
         </div>
+
     </div>
-
-    <!-- FILTER -->
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-
-        <form method="GET" class="d-flex gap-2 flex-wrap">
-            <select name="location" class="form-select form-select-sm fs-7">
-                <option value="">All Locations</option>
-                {% for loc in locations %}
-                    <option value="{{ loc }}" {% if loc == selected_location %}selected{% endif %}>
-                        {{ loc }}
-                    </option>
-                {% endfor %}
-            </select>
-            <button class="btn btn-sm btn-primary fs-7">Filter</button>
-        </form>
-
-    </div> <!-- ✅ FIXED: CLOSED DIV -->
 
     <!-- USERS TABLE -->
     <div class="card shadow-sm rounded-4">
         <div class="card-body p-0">
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 table-striped table-bordered">
+                <table class="table table-hover table-striped table-bordered align-middle mb-0">
 
-                    <thead class="table-light text-muted sticky-top bg-white">
+                    <thead class="table-light sticky-top">
                         <tr>
                             <th>#</th>
                             <th>User</th>
@@ -61,162 +44,222 @@
                         </tr>
                     </thead>
 
-                    <tbody class="small">
+                    <tbody id="usersTable" class="small">
+
                         {% for user in users %}
                         <tr>
+
                             <td>{{ loop.index }}</td>
 
                             <td>
                                 {{ user.username }}
                                 {% if user.id == current_user.id %}
-                                    <span class="badge bg-info ms-1 fs-7">You</span>
+                                    <span class="badge bg-info ms-1">You</span>
                                 {% endif %}
                             </td>
 
                             <td>{{ user.email or '-' }}</td>
 
-                            <td>
-                                <span class="badge bg-light border text-dark px-2 py-1 fs-7">
-                                    {{ user.location or 'N/A' }}
-                                </span>
-                            </td>
+                            <td>{{ user.location or 'N/A' }}</td>
 
                             <td>
                                 {% if user.role == 'admin' %}
-                                    <span class="badge bg-dark px-2 py-1 fs-7">Admin</span>
+                                    <span class="badge bg-dark">Admin</span>
                                 {% else %}
-                                    <span class="badge bg-secondary px-2 py-1 fs-7">{{ user.role }}</span>
+                                    <span class="badge bg-secondary">{{ user.role }}</span>
                                 {% endif %}
                             </td>
 
                             <td>
                                 {% if not user.is_approved %}
-                                    <span class="badge bg-warning text-dark px-2 py-1 fs-7">Pending</span>
+                                    <span class="badge bg-warning text-dark">Pending</span>
                                 {% elif user.active %}
-                                    <span class="badge bg-success px-2 py-1 fs-7">Active</span>
+                                    <span class="badge bg-success">Active</span>
                                 {% else %}
-                                    <span class="badge bg-danger px-2 py-1 fs-7">Inactive</span>
+                                    <span class="badge bg-danger">Inactive</span>
                                 {% endif %}
                             </td>
 
                             <td class="text-center">
-                                <div class="fw-bold text-success mb-1 fs-7" id="wallet-{{ user.id }}">
-                                    {{ (user.get_wallet().balance if user.get_wallet() else 0) | round(2) }}
+                                <div class="fw-bold text-success">
+                                    {{ (user.wallet.balance if user.wallet else 0) | round(2) }}
                                 </div>
 
-                                <form method="POST"
-                                      action="{{ url_for('admin.topup_wallet', user_id=user.id) }}"
-                                      class="d-flex gap-1 align-items-center justify-content-center topup-form"
-                                      data-user-id="{{ user.id }}">
-
-                                    <input type="number"
-                                           name="amount"
-                                           step="0.01"
-                                           min="1"
-                                           required
-                                           class="form-control form-control-sm fs-7"
-                                           placeholder="+"
-                                           style="max-width:60px; height:28px;">
-
-                                    <button type="submit"
-                                            class="btn btn-success btn-sm px-2 fs-7 topup-btn">
-                                        +
-                                    </button>
-                                </form>
+                                {% if current_user.is_admin %}
+                                <button type="button"
+                                        class="btn btn-success btn-sm openTopup"
+                                        data-id="{{ user.id }}"
+                                        data-name="{{ user.username }}">
+                                    💰
+                                </button>
+                                {% endif %}
                             </td>
 
                             <td class="text-center">
-                                <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                <div class="d-flex justify-content-center gap-1">
 
-                                    {% if not user.is_approved and user.role != 'admin' %}
-                                    <form method="POST"
-                                          action="{{ url_for('admin.approve_user', user_id=user.id) }}">
-                                        <button type="submit" class="btn btn-sm btn-outline-success fs-7">
-                                            ✔ Approve
-                                        </button>
-                                    </form>
-                                    {% endif %}
+                                    {% if current_user.is_admin %}
 
-                                    {% if user.role != 'admin' and user.is_approved %}
-                                    <form method="POST"
-                                          action="{{ url_for('admin.toggle_user', user_id=user.id) }}">
-                                        <button type="submit" class="btn btn-sm btn-outline-warning fs-7">
-                                            {{ 'Deactivate' if user.active else 'Activate' }}
-                                        </button>
-                                    </form>
+                                        {% if not user.is_approved and user.role != 'admin' %}
+                                        <form method="POST"
+                                              action="{{ url_for('admin.approve_user', user_id=user.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button class="btn btn-sm btn-outline-success">
+                                                ✔
+                                            </button>
+                                        </form>
+                                        {% endif %}
+
+                                        {% if user.role != 'admin' and user.is_approved %}
+                                        <form method="POST"
+                                              action="{{ url_for('admin.toggle_user', user_id=user.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button class="btn btn-sm btn-outline-warning">
+                                                🔄
+                                            </button>
+                                        </form>
+                                        {% endif %}
+
                                     {% endif %}
 
                                     {% if user.role == 'admin' %}
-                                        <span class="badge bg-light border text-dark px-2 py-1 fs-7">
-                                            Protected
-                                        </span>
+                                        <span class="badge bg-light border">Protected</span>
                                     {% endif %}
 
                                 </div>
                             </td>
-                        </tr>
 
-                        {% else %}
-                        <!-- ✅ EMPTY STATE -->
-                        <tr>
-                            <td colspan="8" class="text-center text-muted py-3">
-                                No users found
-                            </td>
                         </tr>
                         {% endfor %}
+
                     </tbody>
 
                 </table>
             </div>
+
         </div>
     </div>
 
 </div>
 
-<!-- AJAX TOPUP -->
+<!-- ================= TOPUP MODAL ================= -->
+<div class="modal fade" id="topupModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <form id="topupForm">
+
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">💰 Admin Top-up</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <p class="small text-muted">
+                        Top-up wallet for: <b id="topupUser"></b>
+                    </p>
+
+                    <input type="number" name="amount"
+                           class="form-control mb-2"
+                           placeholder="Amount"
+                           min="1"
+                           step="0.01"
+                           required>
+
+                    <input type="password" name="pin"
+                           class="form-control"
+                           placeholder="Enter Admin PIN"
+                           required>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success" id="topupSubmit">
+                        Confirm
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<!-- ================= TOAST ================= -->
+<div id="toastBox" style="position:fixed; top:20px; right:20px; z-index:9999;"></div>
+
 <script>
-document.querySelectorAll('.topup-form').forEach(form => {
-    form.addEventListener('submit', function(e){
+function showToast(msg, type="success"){
+    const el = document.createElement("div");
+    el.className = `alert alert-${type} shadow`;
+    el.innerText = msg;
+    document.getElementById("toastBox").appendChild(el);
+    setTimeout(()=>el.remove(),3000);
+}
+
+// WAIT UNTIL PAGE FULLY LOADS (IMPORTANT FIX)
+window.addEventListener("load", function () {
+
+    const modalEl = document.getElementById('topupModal');
+    const modal = new bootstrap.Modal(modalEl);
+
+    // OPEN MODAL (SAFE EVENT DELEGATION)
+    document.addEventListener("click", function (e) {
+        const btn = e.target.closest(".openTopup");
+        if (!btn) return;
+
         e.preventDefault();
 
-        const userId = this.dataset.userId;
-        const btn = this.querySelector('.topup-btn');
-        const formData = new FormData(this);
+        document.getElementById("topupUser").innerText = btn.dataset.name;
 
-        btn.disabled = true;
-        btn.innerText = "...";
+        const form = document.getElementById("topupForm");
+        form.action = "/admin/users/topup/" + btn.dataset.id;
 
-        fetch(this.action, {
-            method: 'POST',
-            body: formData,
-            headers: {'X-Requested-With': 'XMLHttpRequest'}
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success){
-                document.getElementById('wallet-' + userId).innerText =
-                    parseFloat(data.user_balance).toFixed(2);
+        form.reset();
 
-                document.getElementById('admin-wallet').innerText =
-                    parseFloat(data.admin_balance).toFixed(2) + " SSP";
-
-                form.reset();
-            } else {
-                alert(data.error || "Top-up failed");
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Request failed");
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.innerText = "+";
-        });
+        modal.show();
     });
+
+    // SUBMIT FORM
+    document.getElementById("topupForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const btn = document.getElementById("topupSubmit");
+        btn.disabled = true;
+        btn.innerText = "Processing...";
+
+        try {
+            const res = await fetch(this.action, {
+                method: "POST",
+                body: new FormData(this),
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            const data = await res.json();
+
+            if (!data.success) {
+                throw new Error(data.message || "Top-up failed");
+            }
+
+            showToast("Top-up successful", "success");
+            modal.hide();
+
+            setTimeout(() => location.reload(), 800);
+
+        } catch (err) {
+            showToast(err.message, "danger");
+        }
+
+        btn.disabled = false;
+        btn.innerText = "Confirm";
+    });
+
 });
 </script>
-
-
 
 {% endblock %}

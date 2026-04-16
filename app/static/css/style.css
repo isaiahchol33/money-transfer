@@ -6,7 +6,10 @@ body {
     font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
     overflow-x: hidden;
 }
-
+.container-fluid {
+    margin-top: -15px !important;
+    padding-top: 0!important;
+}
 /* =========================
    CARDS
 ========================= */

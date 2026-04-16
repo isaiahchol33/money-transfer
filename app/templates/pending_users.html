@@ -1,19 +1,27 @@
 {% extends 'base.html' %}
 
+{% block title %}Pending Users{% endblock %}
+
 {% block content %}
 <div class="container mt-3">
 
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h5 class="fw-bold text-primary mb-0">👤 Pending Users</h5>
+
+        <div>
+            <h5 class="fw-bold text-primary mb-0">👤 Pending Users</h5>
+            <small class="text-muted">Users waiting for approval</small>
+        </div>
+
         <span class="badge bg-warning text-dark px-2 py-1 small">
             {{ users|length }} Pending
         </span>
+
     </div>
 
     {% if users %}
 
-    <!-- MOBILE CARDS (VISIBLE ON SMALL SCREENS) -->
+    <!-- MOBILE CARDS -->
     <div class="d-block d-md-none">
         {% for user in users %}
         <div class="card mb-2 shadow-sm border-0 rounded-3">
@@ -31,12 +39,12 @@
                     📞 {{ user.phone_no or '-' }}
                 </div>
 
-                <div class="d-grid">
-                    <a href="{{ url_for('admin.approve_user', user_id=user.id) }}"
-                       class="btn btn-success btn-sm">
+                <form method="POST"
+                      action="{{ url_for('admin.approve_user', user_id=user.id) }}">
+                    <button class="btn btn-success btn-sm w-100">
                         ✔ Approve
-                    </a>
-                </div>
+                    </button>
+                </form>
 
             </div>
         </div>
@@ -45,6 +53,7 @@
 
     <!-- DESKTOP TABLE -->
     <div class="table-responsive d-none d-md-block">
+
         <table class="table table-striped table-sm text-center align-middle mb-0">
 
             <thead class="table-dark">
@@ -53,6 +62,7 @@
                     <th>Username</th>
                     <th>Email</th>
                     <th>Phone</th>
+                    <th>Status</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -60,38 +70,59 @@
             <tbody>
                 {% for user in users %}
                 <tr>
+
                     <td>{{ loop.index }}</td>
-                    <td class="fw-semibold">{{ user.username }}</td>
-                    <td>{{ user.email or '-' }}</td>
-                    <td>{{ user.phone_no or '-' }}</td>
-                    <td>
-                        <a href="{{ url_for('admin.approve_user', user_id=user.id) }}"
-                           class="btn btn-success btn-sm px-2">
-                            ✔ Approve
-                        </a>
+
+                    <td class="fw-semibold">
+                        {{ user.username }}
                     </td>
+
+                    <td>
+                        {{ user.email or '-' }}
+                    </td>
+
+                    <td>
+                        {{ user.phone_no or '-' }}
+                    </td>
+
+                    <td>
+                        <span class="badge bg-warning text-dark">
+                            Pending
+                        </span>
+                    </td>
+
+                    <td>
+                        <form method="POST"
+                              action="{{ url_for('admin.approve_user', user_id=user.id) }}">
+                            <button class="btn btn-success btn-sm px-2">
+                                ✔ Approve
+                            </button>
+                        </form>
+                    </td>
+
                 </tr>
                 {% endfor %}
             </tbody>
 
         </table>
+
     </div>
 
     {% else %}
+
     <!-- EMPTY STATE -->
-    <div class="text-center py-4 text-muted small">
+    <div class="text-center py-5 text-muted">
+
+        <div class="mb-2">
+            <i class="bi bi-check-circle-fill text-success fs-1"></i>
+        </div>
+
         <h6>No pending users</h6>
-        <p>All users are approved ✅</p>
+        <p class="small">All users are already approved ✅</p>
+
     </div>
+
     {% endif %}
 
 </div>
-
-
 {% endblock %}
-
-{% extends 'base.html' %}
-{% block title %}Pending Users{% endblock %}
-
-{% block content %}
-

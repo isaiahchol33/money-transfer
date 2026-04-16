@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% block title %}Manager Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap">
+        <h5 class="fw-bold text-primary mb-1">
+            📍 {{ current_user.location }} - Manager Panel
+        </h5>
+    </div>
+
+    <!-- WALLET -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
+
+            <div>
+                <small class="text-muted">Your Wallet</small><br>
+                <strong class="text-success fs-5">
+                    {{ current_user.wallet.balance if current_user.wallet else 0 }} SSP
+                </strong>
+            </div>
+
+            <span class="badge bg-primary">Manager</span>
+
+        </div>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="d-flex justify-content-end mb-2">
+        <input type="text"
+               id="searchInput"
+               class="form-control form-control-sm"
+               placeholder="🔍 Search users..."
+               style="max-width:200px;">
+    </div>
+
+    <!-- USERS TABLE -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-2">
+
+            <div class="table-responsive">
+
+                <table id="usersTable"
+                       class="table table-hover table-sm text-center align-middle mb-0">
+
+                    <thead class="table-light small">
+                        <tr>
+                            <th>User</th>
+                            <th>Status</th>
+                            <th>Role</th>
+                            <th>Wallet</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody class="small">
+
+                        {% for u in users %}
+                        <tr>
+
+                            <!-- USER -->
+                            <td class="username text-truncate" style="max-width:120px;">
+                                {{ u.username }}
+                            </td>
+
+                            <!-- STATUS -->
+                            <td>
+                                {% if u.active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Suspended</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- ROLE -->
+                            <td>
+                                {% if u.role == "admin" %}
+                                    <span class="badge bg-dark">Admin</span>
+                                {% elif u.role == "supervisor" %}
+                                    <span class="badge bg-info text-dark">Supervisor</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">User</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- WALLET -->
+                            <td class="fw-bold text-success">
+                                {{ u.wallet.balance if u.wallet else 0 }} SSP
+                            </td>
+
+                            <!-- ACTIONS -->
+                            <td>
+
+                                <div class="d-flex flex-wrap gap-1 justify-content-center">
+
+                                    {% if u.role != "admin" %}
+
+                                    <!-- TOGGLE -->
+                                    <form method="POST"
+                                          action="{{ url_for('manager.toggle_user', user_id=u.id) }}">
+                                        {% if csrf_token is defined %}
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        {% endif %}
+                                        <button class="btn btn-warning btn-sm">
+                                            {% if u.active %}Suspend{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+
+                                    <!-- APPROVE -->
+                                    {% if not u.is_approved %}
+                                    <form method="POST"
+                                          action="{{ url_for('manager.approve_user', user_id=u.id) }}">
+                                        {% if csrf_token is defined %}
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        {% endif %}
+                                        <button class="btn btn-success btn-sm">✔</button>
+                                    </form>
+                                    {% endif %}
+
+                                    <!-- ROLE CHANGE -->
+                                    <form method="POST"
+                                          action="{{ url_for('manager.change_user_role', user_id=u.id) }}">
+                                        {% if csrf_token is defined %}
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        {% endif %}
+
+                                        <select name="role"
+                                                class="form-select form-select-sm"
+                                                onchange="this.form.submit()">
+                                            <option value="user" {% if u.role=='user' %}selected{% endif %}>User</option>
+                                            <option value="supervisor" {% if u.role=='supervisor' %}selected{% endif %}>Supervisor</option>
+                                        </select>
+                                    </form>
+
+                                    <!-- TOPUP -->
+                                    <form method="POST"
+                                          action="{{ url_for('manager.manager_topup', user_id=u.id) }}"
+                                          onsubmit="return confirmTopup(this)"
+                                          class="d-flex align-items-center gap-1">
+
+                                        {% if csrf_token is defined %}
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        {% endif %}
+
+                                        <input type="number"
+                                               name="amount"
+                                               step="0.01"
+                                               min="1"
+                                               placeholder="Amt"
+                                               required
+                                               class="form-control form-control-sm"
+                                               style="width:70px;">
+
+                                        <input type="password"
+                                               name="pin"
+                                               placeholder="PIN"
+                                               required
+                                               class="form-control form-control-sm"
+                                               style="width:70px;">
+
+                                        <button class="btn btn-success btn-sm">💰</button>
+                                    </form>
+
+                                    {% else %}
+                                        <span class="text-muted small">Protected</span>
+                                    {% endif %}
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- SEARCH -->
+<script>
+document.getElementById("searchInput").addEventListener("keyup", function () {
+    let value = this.value.toLowerCase();
+    let rows = document.querySelectorAll("#usersTable tbody tr");
+
+    rows.forEach(row => {
+        let username = row.querySelector(".username").innerText.toLowerCase();
+        row.style.display = username.includes(value) ? "" : "none";
+    });
+});
+
+// CONFIRM TOPUP
+function confirmTopup(form) {
+    let amount = form.amount.value;
+    if (!amount || amount <= 0) {
+        alert("Invalid amount");
+        return false;
+    }
+    return confirm("Send " + amount + " SSP from your wallet?");
+}
+</script>
+
+<!-- MOBILE RESPONSIVE -->
+<style>
+@media (max-width: 576px) {
+
+    h5 { font-size: 0.9rem; }
+
+    table { font-size: 0.7rem; }
+
+    .btn {
+        font-size: 0.7rem;
+        padding: 3px 6px;
+    }
+
+    .form-select, .form-control {
+        font-size: 0.7rem;
+        padding: 3px;
+    }
+
+    .card-body {
+        padding: 10px !important;
+    }
+}
+</style>
+
+{% endblock %}
