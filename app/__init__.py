@@ -9,6 +9,7 @@ from flask_migrate import Migrate
 from flask_mail import Mail
 from flask_socketio import SocketIO
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.security import generate_password_hash
 
 # ================= LOAD ENV =================
 load_dotenv()
@@ -23,7 +24,7 @@ csrf = CSRFProtect()
 # ================= SOCKETIO =================
 socketio = SocketIO(
     cors_allowed_origins="*",
-    async_mode="threading",   # ✅ safe for Render (no eventlet/gevent)
+    async_mode="threading",   # ✅ safe for Render
     ping_timeout=60,
     ping_interval=25
 )
@@ -43,7 +44,7 @@ def create_app():
     # ================= DATABASE =================
     db_url = os.environ.get("DATABASE_URL", "sqlite:///database.db")
 
-    # fix postgres URL for modern SQLAlchemy
+    # Fix postgres URL
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
@@ -156,10 +157,37 @@ def create_app():
         app.logger.error(f"Server Error: {e}")
         return render_template("500.html"), 500
 
-    # ================= SQLITE INIT =================
+    # ================= DATABASE INIT + ADMIN SEED =================
     with app.app_context():
-        if db_url.startswith("sqlite:///"):
+        try:
+            # ✅ Create tables (Postgres + SQLite)
             db.create_all()
-            app.logger.info("📦 SQLite DB initialized")
+            app.logger.info("📦 Database tables ensured")
+
+            # ✅ Create default admin if not exists
+            admin_username = os.environ.get("ADMIN_USERNAME", "Superadmin")
+            admin_password = os.environ.get("ADMIN_PASSWORD", "admin1991")
+
+            existing_admin = User.query.filter_by(username=admin_username).first()
+
+            if not existing_admin:
+                admin_user = User(
+                    username=admin_username,
+                    password=generate_password_hash(admin_password),
+                    role="admin",
+                    is_approved=True,
+                    active=True
+                )
+
+                db.session.add(admin_user)
+                db.session.commit()
+
+                app.logger.info("👑 Default admin created")
+
+            else:
+                app.logger.info("✅ Admin already exists")
+
+        except Exception as e:
+            app.logger.error(f"❌ DB Init Error: {e}")
 
     return app
