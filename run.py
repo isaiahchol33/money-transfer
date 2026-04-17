@@ -1,11 +1,19 @@
 import os
-from app import create_app
 
-app = create_app()
+try:
+    from app import create_app
+except Exception as e:
+    print("🔥 IMPORT ERROR:", e)
+    raise
 
-# For Gunicorn (Render uses this)
-if __name__ != "__main__":
-    application = app
+try:
+    app = create_app()
+except Exception as e:
+    print("🔥 APP CREATION ERROR:", e)
+    raise
+
+# For gunicorn
+application = app
 
 # Local dev only
 if __name__ == "__main__":
