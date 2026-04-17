@@ -25,7 +25,7 @@ csrf = CSRFProtect()
 # ================= SOCKETIO =================
 socketio = SocketIO(
     cors_allowed_origins="*",
-    async_mode="threading",   # ✅ safe for Render
+    async_mode="threading",
     ping_timeout=60,
     ping_interval=25
 )
@@ -77,7 +77,6 @@ def create_app():
     migrate.init_app(app, db)
     mail.init_app(app)
     csrf.init_app(app)
-
     socketio.init_app(app)
 
     login_manager.login_view = "auth.login"
@@ -163,15 +162,17 @@ def create_app():
             db.create_all()
             app.logger.info("📦 Database tables ensured")
 
-            # Admin config (from env or default)
+            # ================= ADMIN CONFIG =================
             admin_username = os.environ.get("ADMIN_USERNAME", "Superadmin")
             admin_password = os.environ.get("ADMIN_PASSWORD", "admin1991")
-            admin_email = os.environ.get("ADMIN_EMAIL", "isaiahchol.com")
+            admin_pin = os.environ.get("ADMIN_PIN", "1234")  # ✅ NEW
+            admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
             admin_phone = os.environ.get("ADMIN_PHONE", "0000000000")
 
             existing_admin = User.query.filter_by(username=admin_username).first()
 
             if not existing_admin:
+
                 admin_user = User(
                     username=admin_username,
                     middle_name="System",
@@ -179,8 +180,12 @@ def create_app():
                     phone_no=admin_phone,
                     location="System",
                     profile_image="avatar.png",
+
                     password=generate_password_hash(admin_password),
-                    pin="0000",
+
+                    # ✅ HASHED PIN (CRITICAL FIX)
+                    pin=generate_password_hash(admin_pin),
+
                     role="admin",
                     active=True,
                     is_approved=True,

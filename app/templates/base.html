@@ -24,142 +24,103 @@ body {
     font-family: 'Segoe UI', sans-serif;
     background: #f4f6f9;
     color: #333;
+    font-size: 13px; /* 🔥 REDUCED GLOBAL SIZE */
 }
 
 /* ================= SIDEBAR ================= */
 .sidebar {
-    width: 260px;
+    width: 240px; /* slightly smaller */
     background: #0a2540;
     display: flex;
     flex-direction: column;
-    padding: 20px 12px;
+    padding: 16px 10px;
     box-shadow: 4px 0 20px rgba(0,0,0,0.15);
-    transition: 0.3s ease;
-    position: relative;
-}
-
-.sidebar.collapsed {
-    transform: translateX(-100%);
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100%;
-    z-index: 1050;
-}
-
-/* TOGGLE */
-.sidebar-toggle {
-    display: none;
-    position: fixed;
-    top: 15px;
-    left: 15px;
-    z-index: 1100;
-    background: #0a2540;
-    border: none;
-    color: #fff;
-    font-size: 1.5rem;
-    padding: 6px 10px;
-    border-radius: 6px;
 }
 
 /* LOGO */
 .logo {
     font-weight: 700;
-    font-size: 1.5rem;
-    margin-bottom: 20px;
+    font-size: 1.2rem; /* reduced */
+    margin-bottom: 18px;
     text-align: center;
     color: #00bcd4;
 }
 
 /* PROFILE */
 .profile-strip {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 12px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 12px;
-    margin-bottom: 20px;
-    text-align: center;
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 18px;
 }
 
 .profile-strip img {
-    width: 65px;
-    height: 65px;
-    border-radius: 50%;
-    border: 2px solid #00bcd4;
-    object-fit: cover;
+    width: 55px;
+    height: 55px;
 }
 
 /* MENU */
 .menu a {
-    display: flex;
-    align-items: center;
-    padding: 9px 12px;
-    border-radius: 10px;
-    color: #cfd8dc;
-    text-decoration: none;
-    margin-bottom: 6px;
-    transition: 0.3s;
+    padding: 7px 10px; /* tighter */
+    border-radius: 8px;
+    font-size: 0.82rem; /* smaller text */
+    margin-bottom: 5px;
 }
 
 .menu a i {
-    margin-right: 10px;
-}
-
-.menu a:hover {
-    background: rgba(0,188,212,0.15);
-    color: #00bcd4;
-}
-
-.menu a.active {
-    background: #00bcd4;
-    color: #fff;
+    margin-right: 8px;
+    font-size: 0.9rem;
 }
 
 .menu-title {
-    font-size: 0.7rem;
-    color: #90a4ae;
-    margin: 12px 0 8px;
+    font-size: 0.65rem;
+    margin: 10px 0 6px;
 }
 
 /* ================= CONTENT ================= */
 .content {
     flex: 1;
-    padding: 28px 24px;
+    padding: 20px 20px;
 }
 
 /* TOPBAR */
 .topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #fff;
-    padding: 12px 16px;
-    border-radius: 12px;
-    margin-bottom: 25px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 20px;
 }
 
-/* RIGHT SIDE (PROFILE + LOGOUT) */
-.topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.topbar h6 {
+    font-size: 0.9rem;
+    margin: 0;
 }
 
-/* LOGOUT BUTTON STYLE */
-.logout-btn {
-    font-size: 0.8rem;
+/* BUTTONS */
+.btn {
+    font-size: 0.75rem; /* 🔥 smaller buttons */
     padding: 4px 8px;
 }
 
-/* FLASH */
+/* LOGOUT BUTTON */
+.logout-btn {
+    font-size: 0.7rem;
+    padding: 3px 7px;
+}
+
+/* ALERT */
 .alert {
-    border-radius: 10px;
+    font-size: 0.8rem;
+    padding: 8px 10px;
+}
+
+/* SIDEBAR TOGGLE */
+.sidebar-toggle {
+    font-size: 1.2rem;
+    padding: 5px 8px;
 }
 
 /* ================= RESPONSIVE ================= */
 @media (max-width: 768px) {
+
     body { flex-direction: column; }
 
     .sidebar {
@@ -174,7 +135,7 @@ body {
     }
 
     .content {
-        padding: 15px;
+        padding: 12px;
     }
 }
 
@@ -190,15 +151,17 @@ body {
 
     <div class="logo">💰 Money Transfer</div>
 
-    <div class="profile-strip">
+    <div class="profile-strip text-center">
 
         {% set img = current_user.profile_image if current_user.profile_image else 'avatar.png' %}
 
         <img src="{{ url_for('static', filename='uploads/' + img) }}">
 
-        <strong class="text-white">{{ current_user.username }}</strong>
-        <small class="text-light">{{ current_user.location }}</small>
-        <small class="text-info">{{ current_user.role|capitalize }}</small>
+        <div class="mt-1">
+            <strong class="text-white" style="font-size:12px;">{{ current_user.username }}</strong><br>
+            <small class="text-light" style="font-size:11px;">{{ current_user.location }}</small><br>
+            <small class="text-info" style="font-size:11px;">{{ current_user.role|capitalize }}</small>
+        </div>
     </div>
 
     <div class="menu">
@@ -245,7 +208,6 @@ body {
 
     </div>
 
-    <!-- SIDEBAR LOGOUT -->
     <div class="menu mt-auto">
         <a href="{{ url_for('auth.logout') }}">
             <i class="bi bi-box-arrow-right"></i> Logout
@@ -264,17 +226,15 @@ body {
         </h6>
 
         {% if current_user.is_authenticated %}
-        <div class="topbar-right">
+        <div class="topbar-right d-flex align-items-center gap-2">
 
-            <!-- PROFILE IMAGE -->
             <a href="{{ url_for('auth.profile') }}">
                 <img src="{{ url_for('static', filename='uploads/' + (current_user.profile_image or 'avatar.png')) }}"
-                     style="width:35px;height:35px;border-radius:50%;object-fit:cover;">
+                     style="width:30px;height:30px;border-radius:50%;">
             </a>
 
-            <!-- NEW LOGOUT BUTTON -->
             <a href="{{ url_for('auth.logout') }}"
-               class="btn btn-outline-danger btn-sm logout-btn">
+               class="btn btn-outline-danger logout-btn">
                <i class="bi bi-box-arrow-right"></i>
             </a>
 
@@ -282,7 +242,6 @@ body {
         {% endif %}
     </div>
 
-    <!-- FLASH MESSAGES -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
         <div class="alert alert-{{ category }} alert-dismissible fade show flash-message">
@@ -296,17 +255,14 @@ body {
 
 </div>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- SIDEBAR TOGGLE -->
 <script>
 document.querySelector('.sidebar-toggle')?.addEventListener('click', () => {
     document.querySelector('.sidebar')?.classList.toggle('collapsed');
 });
 </script>
 
-<!-- AUTO HIDE FLASH -->
 <script>
 setTimeout(() => {
     document.querySelectorAll(".flash-message").forEach(el => {

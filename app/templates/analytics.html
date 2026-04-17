@@ -2,27 +2,28 @@
 
 {% block content %}
 
-<div class="container-fluid py-4 modern-dashboard" id="dashboardContent">
+<div class="container-fluid py-3 modern-dashboard" id="dashboardContent">
 
     <!-- ================= HEADER ================= -->
-    <div class="dashboard-header mb-4">
+    <div class="dashboard-header mb-3">
 
         <div>
-            <h4 class="fw-bold mb-1">📊 Analytics Dashboard</h4>
-            <small class="text-muted">Performance overview & insights</small>
+            <h5 class="fw-bold mb-1">📊 Analytics Dashboard</h5>
+            <small class="text-muted" style="font-size:12px;">
+                Performance overview & insights
+            </small>
         </div>
 
         <!-- ================= ACTION BAR ================= -->
         <div class="action-bar">
 
-            <!-- FILTER -->
             <form method="GET" class="filter-bar">
 
                 <input type="date" name="start_date"
                        value="{{ start_date or '' }}"
                        class="form-control form-control-sm">
 
-                <span class="text-muted">→</span>
+                <span class="text-muted" style="font-size:12px;">→</span>
 
                 <input type="date" name="end_date"
                        value="{{ end_date or '' }}"
@@ -41,21 +42,20 @@
 
             </form>
 
-            <!-- EXPORT BUTTONS -->
             <div class="export-bar">
 
                 <a href="{{ url_for('transfer.export_transactions', file_type='excel') }}"
                    class="btn btn-success btn-xs">
-                    ⬇ Excel
+                    Excel
                 </a>
 
                 <a href="{{ url_for('transfer.export_transactions', file_type='pdf') }}"
                    class="btn btn-danger btn-xs">
-                    ⬇ PDF
+                    PDF
                 </a>
 
                 <button onclick="printDashboard()" class="btn btn-dark btn-xs">
-                    🖨 Print
+                    Print
                 </button>
 
             </div>
@@ -65,23 +65,25 @@
     </div>
 
     <!-- ================= KPI CARDS ================= -->
-    <div class="row g-3 mb-4">
+    <div class="row g-2 mb-3">
 
         {% set cards = [
             {'title':'Transactions','value':total_transactions or 0,'icon':'📊'},
             {'title':'Volume','value':total_amount or 0,'icon':'💸'},
             {'title':'Commission','value':total_commission or 0,'icon':'⚙️'},
-            {'title':'Total Wallet','value':total_wallet_balance or 0,'icon':'🏦'}
+            {'title':'Wallet','value':total_wallet_balance or 0,'icon':'🏦'}
         ] %}
 
         {% for c in cards %}
         <div class="col-6 col-lg-3">
             <div class="kpi-card">
                 <div class="kpi-top">
-                    <span>{{ c.icon }}</span>
-                    <small>{{ c.title }}</small>
+                    <span style="font-size:13px;">{{ c.icon }}</span>
+                    <small style="font-size:11px;">{{ c.title }}</small>
                 </div>
-                <h5>SSP {{ "{:,.2f}".format(c.value or 0) }}</h5>
+                <h6 class="mb-0">
+                    SSP {{ "{:,.2f}".format(c.value or 0) }}
+                </h6>
             </div>
         </div>
         {% endfor %}
@@ -89,29 +91,29 @@
     </div>
 
     <!-- ================= CHARTS ================= -->
-    <div class="row g-3">
+    <div class="row g-2">
 
         <div class="col-lg-8">
             <div class="chart-card">
                 <div class="chart-header">📈 Revenue Trend</div>
                 <canvas id="monthlyChart"></canvas>
-                <div class="empty-msg" id="monthlyEmpty">No data available</div>
+                <div class="empty-msg" id="monthlyEmpty">No data</div>
             </div>
         </div>
 
         <div class="col-lg-4">
             <div class="chart-card">
-                <div class="chart-header">📊 Daily Activity</div>
+                <div class="chart-header">📊 Daily</div>
                 <canvas id="dailyChart"></canvas>
-                <div class="empty-msg" id="dailyEmpty">No data available</div>
+                <div class="empty-msg" id="dailyEmpty">No data</div>
             </div>
         </div>
 
         <div class="col-lg-4">
             <div class="chart-card">
-                <div class="chart-header">🏆 Top Users</div>
+                <div class="chart-header">🏆 Users</div>
                 <canvas id="activeUsersChart"></canvas>
-                <div class="empty-msg" id="usersEmpty">No data available</div>
+                <div class="empty-msg" id="usersEmpty">No data</div>
             </div>
         </div>
 
@@ -119,7 +121,7 @@
             <div class="chart-card">
                 <div class="chart-header">📍 Location</div>
                 <canvas id="locationChart"></canvas>
-                <div class="empty-msg" id="locationEmpty">No data available</div>
+                <div class="empty-msg" id="locationEmpty">No data</div>
             </div>
         </div>
 
@@ -127,7 +129,7 @@
             <div class="chart-card">
                 <div class="chart-header">💰 Commission</div>
                 <canvas id="commissionChart"></canvas>
-                <div class="empty-msg" id="commissionEmpty">No data available</div>
+                <div class="empty-msg" id="commissionEmpty">No data</div>
             </div>
         </div>
 
@@ -144,149 +146,118 @@
     font-family: system-ui;
 }
 
-/* ================= HEADER ACTION BAR ================= */
+/* HEADER */
 .dashboard-header{
     display:flex;
     justify-content:space-between;
     align-items:flex-start;
     flex-wrap:wrap;
-    gap:12px;
+    gap:10px;
 }
 
+/* ACTION BAR */
 .action-bar{
     display:flex;
     flex-direction:column;
-    gap:8px;
+    gap:6px;
     align-items:flex-end;
 }
 
 /* FILTER */
 .filter-bar{
     display:flex;
-    gap:6px;
+    gap:5px;
     align-items:center;
     background:#fff;
-    padding:5px 8px;
-    border-radius:10px;
+    padding:4px 6px;
+    border-radius:8px;
     border:1px solid #e5e7eb;
 }
 
-/* EXPORT BAR */
-.export-bar{
-    display:flex;
-    gap:6px;
-}
-
-/* ================= SMALL BUTTONS ================= */
+/* BUTTONS */
 .btn-xs{
-    font-size:11px;
-    padding:4px 8px;
+    font-size:10px;
+    padding:3px 7px;
     border-radius:6px;
 }
 
-/* ================= KPI ================= */
+/* KPI */
 .kpi-card {
     background: #fff;
-    border-radius: 14px;
-    padding: 14px;
+    border-radius: 12px;
+    padding: 12px;
     border: 1px solid #e5e7eb;
 }
 
 .kpi-top {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: #6b7280;
-    margin-bottom: 6px;
+    display:flex;
+    justify-content:space-between;
+    font-size:11px;
+    color:#6b7280;
+    margin-bottom:4px;
 }
 
-.kpi-card h5 {
-    font-weight: 700;
-    margin: 0;
-}
-
-/* ================= CHART ================= */
+/* CHART */
 .chart-card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 12px;
-    border: 1px solid #e5e7eb;
-    height: 320px;
-    display: flex;
-    flex-direction: column;
-    position: relative;
+    background:#fff;
+    border-radius:12px;
+    padding:10px;
+    border:1px solid #e5e7eb;
+    height:300px;
+    display:flex;
+    flex-direction:column;
+    position:relative;
 }
 
 .chart-header {
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 8px;
+    font-size:12px;
+    font-weight:600;
+    margin-bottom:6px;
 }
 
 canvas {
-    flex: 1;
-    width: 100% !important;
-    height: 250px !important;
+    flex:1;
+    width:100% !important;
+    height:230px !important;
 }
 
 .empty-msg {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 12px;
-    color: #9ca3af;
-    display: none;
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    font-size:11px;
+    color:#9ca3af;
+    display:none;
 }
 
-/* ================= PRINT ================= */
+/* PRINT */
 @media print {
     .action-bar,
-    .dashboard-header small,
-    .btn {
-        display: none !important;
-    }
-
-    body {
-        background: white;
-    }
-
-    .chart-card, .kpi-card {
-        box-shadow: none;
-        border: 1px solid #ddd;
+    .btn,
+    small {
+        display:none !important;
     }
 }
-
-@media(max-width:768px){
-    .chart-card{ height:auto; }
-    .action-bar{ align-items:flex-start; }
-}
-
 </style>
 
-<!-- ================= CHARTS ================= -->
+<!-- ================= CHART JS ================= -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 
-function safeArray(x){
-    return Array.isArray(x) ? x : [];
-}
+function safeArray(x){ return Array.isArray(x) ? x : []; }
 
-const months = safeArray({{ months | default([]) | tojson }});
-const monthly_amounts = safeArray({{ monthly_amounts | default([]) | tojson }});
-
-const dates = safeArray({{ dates | default([]) | tojson }});
-const counts = safeArray({{ counts | default([]) | tojson }});
-
-const active_names = safeArray({{ active_names | default([]) | tojson }});
-const active_counts = safeArray({{ active_counts | default([]) | tojson }});
-
-const locations = safeArray({{ locations | default([]) | tojson }});
-const location_counts = safeArray({{ location_counts | default([]) | tojson }});
-
-const commission_locations = safeArray({{ commission_locations | default([]) | tojson }});
-const commission_values = safeArray({{ commission_values | default([]) | tojson }});
+const months = safeArray({{ months | tojson }});
+const monthly_amounts = safeArray({{ monthly_amounts | tojson }});
+const dates = safeArray({{ dates | tojson }});
+const counts = safeArray({{ counts | tojson }});
+const active_names = safeArray({{ active_names | tojson }});
+const active_counts = safeArray({{ active_counts | tojson }});
+const locations = safeArray({{ locations | tojson }});
+const location_counts = safeArray({{ location_counts | tojson }});
+const commission_locations = safeArray({{ commission_locations | tojson }});
+const commission_values = safeArray({{ commission_values | tojson }});
 
 let charts = [];
 
@@ -310,49 +281,40 @@ function createCharts(){
 
     if(monthly_amounts.length){
         charts.push(new Chart(el("monthlyChart"), {
-            type: 'line',
-            data: { labels: months, datasets: [{ data: monthly_amounts, fill:true, tension:0.4 }] },
-            options: { plugins:{legend:{display:false}}, responsive:true }
+            type:'line',
+            data:{ labels:months, datasets:[{ data:monthly_amounts, fill:true }] },
+            options:{ plugins:{legend:{display:false}} }
         }));
     }
 
     if(counts.length){
         charts.push(new Chart(el("dailyChart"), {
-            type: 'bar',
-            data: { labels: dates, datasets: [{ data: counts }] },
-            options: { plugins:{legend:{display:false}}, responsive:true }
+            type:'bar',
+            data:{ labels:dates, datasets:[{ data:counts }] },
+            options:{ plugins:{legend:{display:false}} }
         }));
     }
 
     if(active_counts.length){
         charts.push(new Chart(el("activeUsersChart"), {
-            type: 'bar',
-            data: { labels: active_names, datasets: [{ data: active_counts }] },
-            options: { indexAxis:'y', plugins:{legend:{display:false}} }
+            type:'bar',
+            data:{ labels:active_names, datasets:[{ data:active_counts }] },
+            options:{ indexAxis:'y', plugins:{legend:{display:false}} }
         }));
     }
 
     if(location_counts.length){
         charts.push(new Chart(el("locationChart"), {
-            type: 'doughnut',
-            data: { labels: locations, datasets: [{ data: location_counts }] }
+            type:'doughnut',
+            data:{ labels:locations, datasets:[{ data:location_counts }] }
         }));
     }
 
     if(commission_values.length){
         charts.push(new Chart(el("commissionChart"), {
-            type: 'bar',
-            data: {
-                labels: commission_locations,
-                datasets: [{
-                    data: commission_values,
-                    backgroundColor: '#6366f1'
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                plugins: { legend:{display:false} }
-            }
+            type:'bar',
+            data:{ labels:commission_locations, datasets:[{ data:commission_values }] },
+            options:{ indexAxis:'y', plugins:{legend:{display:false}} }
         }));
     }
 }
