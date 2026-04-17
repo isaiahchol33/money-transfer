@@ -1,28 +1,22 @@
 import os
+from app import create_app, socketio
 
-print("🚀 Starting app...")
+# Create Flask app
+app = create_app()
 
-try:
-    from app import create_app
-    print("✅ Imported create_app")
-except Exception as e:
-    print("🔥 IMPORT ERROR:", e)
-    raise
+# Required for Gunicorn + SocketIO
+# (exposes socketio instance properly)
+application = app
 
-try:
-    app = create_app()
-    print("✅ App created successfully")
-except Exception as e:
-    print("🔥 APP CREATION ERROR:", e)
-    raise
-
+# =========================
+# 🔥 DEVELOPMENT ONLY
+# =========================
 if __name__ == "__main__":
-    from app import socketio
-
     socketio.run(
         app,
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 5000)),
         debug=True,
-        use_reloader=False
+        use_reloader=False,
+        log_output=True
     )

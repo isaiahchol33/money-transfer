@@ -23,7 +23,7 @@ csrf = CSRFProtect()
 # ================= SOCKETIO =================
 socketio = SocketIO(
     cors_allowed_origins="*",
-    async_mode="threading",
+    async_mode="threading",   # ✅ safe for Render (no eventlet/gevent)
     ping_timeout=60,
     ping_interval=25
 )
@@ -43,6 +43,7 @@ def create_app():
     # ================= DATABASE =================
     db_url = os.environ.get("DATABASE_URL", "sqlite:///database.db")
 
+    # fix postgres URL for modern SQLAlchemy
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
@@ -102,9 +103,7 @@ def create_app():
             app.logger.error(f"User load failed: {e}")
             return None
 
-    # =====================================================
-    # 🔥 FIX: MAKE is_admin AVAILABLE IN ALL TEMPLATES
-    # =====================================================
+    # ================= GLOBAL CONTEXT =================
     @app.context_processor
     def inject_globals():
         def is_admin():
