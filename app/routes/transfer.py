@@ -44,8 +44,6 @@ def ensure_wallet(user):
         wallet = Wallet(user_id=user.id, balance=0)
         db.session.add(wallet)
         db.session.commit()
-    if wallet.balance is None:
-        wallet.balance = 0
     return wallet
 
 
@@ -87,7 +85,7 @@ def error_response(message, code=400):
 
 
 # =====================================================
-# TRANSFER MONEY
+# 💸 TRANSFER MONEY (SAFE VERSION)
 # =====================================================
 @transfer.route('/', methods=['GET', 'POST'])
 @login_required
@@ -113,9 +111,10 @@ def transfer_money():
 
             try:
                 amount = float(request.form.get('amount', 0))
-            except:
+            except Exception:
                 return error_response("Invalid amount")
 
+            # ✅ VALIDATION
             if not all([
                 is_valid_name(sender_name),
                 is_valid_name(receiver_name),
@@ -130,7 +129,14 @@ def transfer_money():
             commission = calculate_commission(amount)
             total = amount + commission
 
-            wallet = Wallet.query.filter_by(user_id=current_user.id).with_for_update().first()
+            # 🔒 LOCK WALLET ROW (important for Postgres)
+            wallet = db.session.query(Wallet)\
+                .filter_by(user_id=current_user.id)\
+                .with_for_update()\
+                .first()
+
+            if not wallet:
+                return error_response("Wallet not found")
 
             if wallet.balance < total:
                 return error_response("Insufficient balance")
@@ -157,6 +163,7 @@ def transfer_money():
             )
 
             db.session.add(tx)
+
             log_wallet(current_user.id, old_balance, wallet.balance, total, "debit")
 
             db.session.commit()
@@ -172,7 +179,7 @@ def transfer_money():
 
 
 # =====================================================
-# RECENT TRANSACTIONS
+# 📜 RECENT TRANSACTIONS
 # =====================================================
 @transfer.route('/transactions')
 @login_required
@@ -203,7 +210,7 @@ def recent_transactions_view():
 
 
 # =====================================================
-# EDIT TRANSACTION (FINAL FIX)
+# ✏️ EDIT TRANSACTION
 # =====================================================
 @transfer.route('/edit/<int:transaction_id>', methods=['GET', 'POST'])
 @login_required
@@ -213,16 +220,10 @@ def edit_transaction(transaction_id):
 
     role = str(getattr(current_user, "role", "")).lower()
 
-    is_admin = role == "admin"
-    is_manager = role == "manager"
-    is_sender = current_user.id == tx.sender_cashier_id
-    is_receiver = current_user.id == getattr(tx, "receiver_cashier_id", None)
-
-    # ❌ BLOCK receiver
-    if is_receiver:
+    if current_user.id == getattr(tx, "receiver_cashier_id", None):
         abort(403)
 
-    if not (is_admin or is_manager or is_sender):
+    if not (role in ["admin", "manager"] or current_user.id == tx.sender_cashier_id):
         abort(403)
 
     if tx.status == STATUS_PAID:
@@ -233,8 +234,14 @@ def edit_transaction(transaction_id):
         try:
             tx.receiver_name = request.form.get('receiver_name', '').strip()
             tx.receiver_phone = request.form.get('receiver_phone', '').strip()
-            tx.amount = float(request.form.get('amount', 0))
-            tx.commission = calculate_commission(tx.amount)
+
+            amount = float(request.form.get('amount', 0))
+
+            if amount <= 0:
+                raise ValueError("Amount must be greater than 0")
+
+            tx.amount = amount
+            tx.commission = calculate_commission(amount)
 
             db.session.commit()
             flash("Transaction updated", "success")
@@ -249,7 +256,7 @@ def edit_transaction(transaction_id):
 
 
 # =====================================================
-# PAY TRANSACTION
+# 💰 PAY TRANSACTION (SAFE LOCKING)
 # =====================================================
 @transfer.route('/pay/<int:transaction_id>', methods=['POST'])
 @login_required
@@ -264,10 +271,15 @@ def pay_transaction(transaction_id):
         flash("Already paid", "warning")
         return redirect(url_for("transfer.recent_transactions_view"))
 
-    wallet = Wallet.query.filter_by(user_id=current_user.id).with_for_update().first()
-    wallet = wallet or ensure_wallet(current_user)
-
     try:
+        wallet = db.session.query(Wallet)\
+            .filter_by(user_id=current_user.id)\
+            .with_for_update()\
+            .first()
+
+        if not wallet:
+            wallet = ensure_wallet(current_user)
+
         old_balance = wallet.balance
 
         wallet.balance += tx.amount
@@ -276,6 +288,7 @@ def pay_transaction(transaction_id):
         log_wallet(current_user.id, old_balance, wallet.balance, tx.amount, "credit")
 
         db.session.commit()
+
         flash("Payment successful", "success")
 
     except Exception:
@@ -286,7 +299,7 @@ def pay_transaction(transaction_id):
 
 
 # =====================================================
-# EXPORT
+# 📤 EXPORT (EXCEL + PDF SAFE)
 # =====================================================
 @transfer.route('/export/<file_type>')
 @login_required
@@ -315,10 +328,14 @@ def export_transactions(file_type):
                          download_name="transactions.xlsx",
                          as_attachment=True)
 
+    # ✅ SAFE PDF GENERATION
     html = render_template("transaction_pd.html", transactions=transactions)
 
     pdf = io.BytesIO()
-    pisa.CreatePDF(html, dest=pdf)
+    pisa_status = pisa.CreatePDF(html, dest=pdf)
+
+    if pisa_status.err:
+        abort(500, "Error generating PDF")
 
     pdf.seek(0)
 

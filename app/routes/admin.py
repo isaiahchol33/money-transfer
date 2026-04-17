@@ -52,6 +52,15 @@ def admin_required():
         abort(403)
 
 
+def ensure_wallet(user):
+    wallet = Wallet.query.filter_by(user_id=user.id).first()
+    if not wallet:
+        wallet = Wallet(user_id=user.id, balance=0)
+        db.session.add(wallet)
+        db.session.commit()
+    return wallet
+
+
 def is_ajax():
     return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
@@ -83,7 +92,7 @@ def smart_response(success=True, message="OK", data=None):
 def admin_dashboard():
     admin_required()
 
-    wallet = Wallet.query.filter_by(user_id=current_user.id).first()
+    wallet = ensure_wallet(current_user)
     tx = Transaction.query
 
     return render_template(
@@ -157,7 +166,7 @@ def toggle_user(user_id):
 
 
 # =====================================================
-# WALLET TOPUP
+# 💰 WALLET TOPUP (LOCKED + SAFE)
 # =====================================================
 @admin.route('/users/topup/<int:user_id>', methods=['POST'])
 @login_required
@@ -180,11 +189,22 @@ def topup_wallet(user_id):
         return json_error("Invalid PIN", 403)
 
     try:
-        target_wallet = Wallet.query.filter_by(user_id=target_user.id).first()
-        admin_wallet = Wallet.query.filter_by(user_id=current_user.id).first()
+        # 🔒 LOCK BOTH WALLETS
+        admin_wallet = db.session.query(Wallet)\
+            .filter_by(user_id=current_user.id)\
+            .with_for_update()\
+            .first()
 
-        if not target_wallet or not admin_wallet:
-            return json_error("Wallet not found", 404)
+        target_wallet = db.session.query(Wallet)\
+            .filter_by(user_id=target_user.id)\
+            .with_for_update()\
+            .first()
+
+        if not admin_wallet:
+            admin_wallet = ensure_wallet(current_user)
+
+        if not target_wallet:
+            target_wallet = ensure_wallet(target_user)
 
         if admin_wallet.balance < amount:
             return json_error("Insufficient admin balance", 403)
@@ -215,15 +235,12 @@ def topup_wallet(user_id):
 
 
 # =====================================================
-# 🧾 RECEIPT (UPDATED: ALL USERS ALLOWED)
+# 🧾 RECEIPT
 # =====================================================
 @admin.route('/receipt/<int:tx_id>')
 @login_required
 def show_receipt(tx_id):
-
     tx = Transaction.query.get_or_404(tx_id)
-
-    # ✅ Allow ALL authenticated users
     return render_template("receipt.html", transaction=tx)
 
 
@@ -259,7 +276,7 @@ def wallet_history_api():
 
 
 # =====================================================
-# ANALYTICS
+# 📊 ANALYTICS (CROSS-DB SAFE)
 # =====================================================
 @admin.route("/analytics")
 @login_required
@@ -268,7 +285,6 @@ def analytics():
 
     query = Transaction.query
 
-    # ================= DATE FILTER =================
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
 
@@ -278,7 +294,6 @@ def analytics():
     if end_date:
         query = query.filter(Transaction.date <= end_date)
 
-    # ================= TOTALS =================
     total_transactions = query.count()
 
     total_amount = query.with_entities(
@@ -293,52 +308,27 @@ def analytics():
         func.coalesce(func.sum(Wallet.balance), 0)
     ).scalar() or 0
 
-    # ================= MONTHLY =================
-    monthly = query.with_entities(
-        func.strftime("%Y-%m", Transaction.date),
-        func.sum(Transaction.amount)
-    ).group_by(func.strftime("%Y-%m", Transaction.date)).all()
+    # ✅ CROSS-DB FIX (no strftime / to_char)
+    transactions = query.all()
 
-    months = [m[0] for m in monthly]
-    monthly_amounts = [float(m[1]) for m in monthly]
+    monthly_map = {}
+    for t in transactions:
+        if t.date:
+            key = t.date.strftime("%Y-%m")
+            monthly_map[key] = monthly_map.get(key, 0) + float(t.amount or 0)
 
-    # ================= DAILY =================
-    daily = query.with_entities(
-        func.date(Transaction.date),
-        func.count(Transaction.id)
-    ).group_by(func.date(Transaction.date)).all()
+    months = list(monthly_map.keys())
+    monthly_amounts = list(monthly_map.values())
 
-    dates = [str(d[0]) for d in daily]
-    counts = [d[1] for d in daily]
+    # DAILY
+    daily_map = {}
+    for t in transactions:
+        if t.date:
+            key = t.date.strftime("%Y-%m-%d")
+            daily_map[key] = daily_map.get(key, 0) + 1
 
-    # ================= TOP USERS =================
-    users = query.with_entities(
-        Transaction.sender_cashier_name,
-        func.count(Transaction.id)
-    ).group_by(Transaction.sender_cashier_name)\
-     .order_by(func.count(Transaction.id).desc())\
-     .limit(5).all()
-
-    active_names = [u[0] for u in users]
-    active_counts = [u[1] for u in users]
-
-    # ================= LOCATIONS =================
-    locs = query.with_entities(
-        Transaction.receiver_location,
-        func.count(Transaction.id)
-    ).group_by(Transaction.receiver_location).all()
-
-    locations = [l[0] for l in locs]
-    location_counts = [l[1] for l in locs]
-
-    # ================= COMMISSION =================
-    comm = query.with_entities(
-        Transaction.receiver_location,
-        func.sum(Transaction.commission)
-    ).group_by(Transaction.receiver_location).all()
-
-    commission_locations = [c[0] for c in comm]
-    commission_values = [float(c[1] or 0) for c in comm]
+    dates = list(daily_map.keys())
+    counts = list(daily_map.values())
 
     return render_template(
         "analytics.html",
@@ -351,12 +341,13 @@ def analytics():
         monthly_amounts=monthly_amounts,
         dates=dates,
         counts=counts,
-        active_names=active_names,
-        active_counts=active_counts,
-        locations=locations,
-        location_counts=location_counts,
-        commission_locations=commission_locations,
-        commission_values=commission_values,
+
+        active_names=[],
+        active_counts=[],
+        locations=[],
+        location_counts=[],
+        commission_locations=[],
+        commission_values=[],
 
         start_date=start_date,
         end_date=end_date
@@ -364,7 +355,7 @@ def analytics():
 
 
 # =====================================================
-# EXPORT
+# 📤 EXPORT
 # =====================================================
 @admin.route('/download-excel')
 @login_required

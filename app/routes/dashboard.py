@@ -1,10 +1,11 @@
+import io
+from datetime import datetime, timedelta
+
+import pandas as pd
 
 from flask import Blueprint, render_template, request, send_file
 from flask_login import login_required, current_user
-from sqlalchemy import func
-from datetime import datetime, timedelta
-import pandas as pd
-import io
+from sqlalchemy import func, extract
 
 from app import db
 from app.models import Transaction
@@ -40,21 +41,18 @@ def apply_filters(query):
     if end_date:
         end_date += timedelta(days=1)
 
-    # ROLE FILTER
     if current_user.role != "admin":
         query = query.filter(
             (Transaction.sender_cashier_id == current_user.id) |
             (Transaction.receiver_cashier_id == current_user.id)
         )
 
-    # DATE FILTER
     if start_date:
         query = query.filter(Transaction.date >= start_date)
 
     if end_date:
         query = query.filter(Transaction.date < end_date)
 
-    # SEARCH FILTER
     if search:
         query = query.filter(
             (Transaction.sender_name.ilike(f"%{search}%")) |
@@ -65,7 +63,6 @@ def apply_filters(query):
             (Transaction.receiver_location.ilike(f"%{search}%"))
         )
 
-    # CASHIER FILTER
     if cashier:
         query = query.filter(Transaction.sender_cashier_name == cashier)
 
@@ -78,10 +75,8 @@ def apply_filters(query):
 def dashboard_home():
 
     wallet = current_user.get_wallet()
-
     base_query = apply_filters(Transaction.query)
 
-    # ================= PAGINATION =================
     page = request.args.get('page', 1, type=int)
 
     pagination = base_query.order_by(
@@ -101,16 +96,16 @@ def dashboard_home():
         func.coalesce(func.sum(Transaction.commission), 0)
     ).scalar() or 0
 
-
     # ================= MONTHLY COMPARISON =================
     now = datetime.utcnow()
 
     this_month_start = datetime(now.year, now.month, 1)
 
-    if now.month == 1:
-        last_month_start = datetime(now.year - 1, 12, 1)
-    else:
-        last_month_start = datetime(now.year, now.month - 1, 1)
+    last_month_start = (
+        datetime(now.year - 1, 12, 1)
+        if now.month == 1
+        else datetime(now.year, now.month - 1, 1)
+    )
 
     this_month_total = db.session.query(
         func.coalesce(func.sum(Transaction.amount), 0)
@@ -131,26 +126,44 @@ def dashboard_home():
         if last_month_total > 0 else (100 if this_month_total > 0 else 0)
     )
 
-
     # ================= CHART DATA =================
-    monthly_data = base_query.with_entities(
-        func.strftime('%Y-%m', Transaction.date),
+
+    # ✅ CROSS-DB MONTHLY
+    monthly_raw = base_query.with_entities(
+        extract('year', Transaction.date),
+        extract('month', Transaction.date),
         func.sum(Transaction.amount)
-    ).group_by(func.strftime('%Y-%m', Transaction.date)).all()
+    ).group_by(
+        extract('year', Transaction.date),
+        extract('month', Transaction.date)
+    ).all()
 
-    months = [m[0] for m in monthly_data]
-    monthly_amounts = [float(m[1] or 0) for m in monthly_data]
+    months = [
+        f"{int(y)}-{int(m):02d}" for y, m, _ in monthly_raw
+    ]
+    monthly_amounts = [
+        float(total or 0) for _, _, total in monthly_raw
+    ]
 
-
-    daily_data = base_query.with_entities(
-        func.strftime('%Y-%m-%d', Transaction.date),
+    # ✅ CROSS-DB DAILY
+    daily_raw = base_query.with_entities(
+        extract('year', Transaction.date),
+        extract('month', Transaction.date),
+        extract('day', Transaction.date),
         func.count(Transaction.id)
-    ).group_by(func.strftime('%Y-%m-%d', Transaction.date)).all()
+    ).group_by(
+        extract('year', Transaction.date),
+        extract('month', Transaction.date),
+        extract('day', Transaction.date)
+    ).all()
 
-    dates = [d[0] for d in daily_data]
-    counts = [d[1] for d in daily_data]
+    dates = [
+        f"{int(y)}-{int(m):02d}-{int(d):02d}"
+        for y, m, d, _ in daily_raw
+    ]
+    counts = [c for _, _, _, c in daily_raw]
 
-
+    # USERS
     users_data = base_query.with_entities(
         Transaction.sender_cashier_name,
         func.count(Transaction.id)
@@ -159,7 +172,7 @@ def dashboard_home():
     active_names = [u[0] or "Unknown" for u in users_data]
     active_counts = [u[1] for u in users_data]
 
-
+    # LOCATIONS
     location_data = base_query.with_entities(
         Transaction.receiver_location,
         func.count(Transaction.id)
@@ -168,7 +181,7 @@ def dashboard_home():
     locations = [l[0] or "Unknown" for l in location_data]
     location_counts = [l[1] for l in location_data]
 
-
+    # COMMISSION
     commission_data = base_query.with_entities(
         Transaction.receiver_location,
         func.sum(Transaction.commission)
@@ -177,8 +190,7 @@ def dashboard_home():
     commission_locations = [c[0] or "Unknown" for c in commission_data]
     commission_values = [float(c[1] or 0) for c in commission_data]
 
-
-    # ================= CASHIERS =================
+    # CASHIERS
     cashiers = db.session.query(
         Transaction.sender_cashier_name
     ).filter(
@@ -186,7 +198,6 @@ def dashboard_home():
     ).distinct().all()
 
     cashiers = [c[0] for c in cashiers if c[0]]
-
 
     return render_template(
         "dashboard.html",
