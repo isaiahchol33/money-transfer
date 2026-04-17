@@ -1,5 +1,6 @@
 import os
 import logging
+from datetime import datetime
 from dotenv import load_dotenv
 
 from flask import Flask, redirect, url_for, render_template
@@ -44,7 +45,6 @@ def create_app():
     # ================= DATABASE =================
     db_url = os.environ.get("DATABASE_URL", "sqlite:///database.db")
 
-    # Fix postgres URL
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
@@ -160,23 +160,32 @@ def create_app():
     # ================= DATABASE INIT + ADMIN SEED =================
     with app.app_context():
         try:
-            # ✅ Create tables (Postgres + SQLite)
             db.create_all()
             app.logger.info("📦 Database tables ensured")
 
-            # ✅ Create default admin if not exists
+            # Admin config (from env or default)
             admin_username = os.environ.get("ADMIN_USERNAME", "Superadmin")
             admin_password = os.environ.get("ADMIN_PASSWORD", "admin1991")
+            admin_email = os.environ.get("ADMIN_EMAIL", "isaiahchol.com")
+            admin_phone = os.environ.get("ADMIN_PHONE", "0000000000")
 
             existing_admin = User.query.filter_by(username=admin_username).first()
 
             if not existing_admin:
                 admin_user = User(
                     username=admin_username,
+                    middle_name="System",
+                    email=admin_email,
+                    phone_no=admin_phone,
+                    location="System",
+                    profile_image="avatar.png",
                     password=generate_password_hash(admin_password),
+                    pin="0000",
                     role="admin",
+                    active=True,
                     is_approved=True,
-                    active=True
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
                 )
 
                 db.session.add(admin_user)
@@ -188,6 +197,7 @@ def create_app():
                 app.logger.info("✅ Admin already exists")
 
         except Exception as e:
+            db.session.rollback()
             app.logger.error(f"❌ DB Init Error: {e}")
 
     return app
