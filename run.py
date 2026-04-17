@@ -1,8 +1,12 @@
 import os
 from app import create_app, socketio
 
+# Create Flask app
 app = create_app()
 
+# =========================
+# 🔥 DEVELOPMENT ONLY
+# =========================
 if __name__ == "__main__":
     socketio.run(
         app,
