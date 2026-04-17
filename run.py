@@ -1,21 +1,21 @@
 import os
 
+print("🚀 Starting app...")
+
 try:
     from app import create_app
+    print("✅ Imported create_app")
 except Exception as e:
     print("🔥 IMPORT ERROR:", e)
     raise
 
 try:
     app = create_app()
+    print("✅ App created successfully")
 except Exception as e:
     print("🔥 APP CREATION ERROR:", e)
     raise
 
-# For gunicorn
-application = app
-
-# Local dev only
 if __name__ == "__main__":
     from app import socketio
 
