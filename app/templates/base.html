@@ -24,24 +24,24 @@ body {
     font-family: 'Segoe UI', sans-serif;
     background: #f4f6f9;
     color: #333;
-    font-size: 13px; /* 🔥 REDUCED GLOBAL SIZE */
+    font-size: 12.5px; /* reduced more for clean UI */
 }
 
 /* ================= SIDEBAR ================= */
 .sidebar {
-    width: 240px; /* slightly smaller */
+    width: 230px;
     background: #0a2540;
     display: flex;
     flex-direction: column;
-    padding: 16px 10px;
+    padding: 14px 10px;
     box-shadow: 4px 0 20px rgba(0,0,0,0.15);
 }
 
 /* LOGO */
 .logo {
     font-weight: 700;
-    font-size: 1.2rem; /* reduced */
-    margin-bottom: 18px;
+    font-size: 1.1rem;
+    margin-bottom: 16px;
     text-align: center;
     color: #00bcd4;
 }
@@ -50,72 +50,69 @@ body {
 .profile-strip {
     padding: 10px;
     border-radius: 10px;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
 }
 
 .profile-strip img {
-    width: 55px;
-    height: 55px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
 }
 
 /* MENU */
 .menu a {
-    padding: 7px 10px; /* tighter */
+    padding: 6px 10px;
     border-radius: 8px;
-    font-size: 0.82rem; /* smaller text */
-    margin-bottom: 5px;
+    font-size: 0.8rem;
+    margin-bottom: 4px;
 }
 
 .menu a i {
-    margin-right: 8px;
+    margin-right: 7px;
     font-size: 0.9rem;
 }
 
 .menu-title {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     margin: 10px 0 6px;
+    color: #cbd5e1;
 }
 
 /* ================= CONTENT ================= */
 .content {
     flex: 1;
-    padding: 20px 20px;
+    padding: 18px;
 }
 
 /* TOPBAR */
 .topbar {
-    padding: 10px 14px;
+    padding: 9px 12px;
     border-radius: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
 }
 
 .topbar h6 {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     margin: 0;
 }
 
 /* BUTTONS */
 .btn {
-    font-size: 0.75rem; /* 🔥 smaller buttons */
-    padding: 4px 8px;
-}
-
-/* LOGOUT BUTTON */
-.logout-btn {
-    font-size: 0.7rem;
-    padding: 3px 7px;
+    font-size: 0.72rem;
+    padding: 4px 7px;
 }
 
 /* ALERT */
 .alert {
-    font-size: 0.8rem;
-    padding: 8px 10px;
+    font-size: 0.78rem;
+    padding: 7px 9px;
 }
 
 /* SIDEBAR TOGGLE */
 .sidebar-toggle {
-    font-size: 1.2rem;
-    padding: 5px 8px;
+    font-size: 1.1rem;
+    padding: 5px 7px;
 }
 
 /* ================= RESPONSIVE ================= */
@@ -128,10 +125,6 @@ body {
         transform: translateX(-100%);
         height: 100%;
         z-index: 1050;
-    }
-
-    .sidebar-toggle {
-        display: block;
     }
 
     .content {
@@ -153,14 +146,24 @@ body {
 
     <div class="profile-strip text-center">
 
-        {% set img = current_user.profile_image if current_user.profile_image else 'avatar.png' %}
+        {% set img = current_user.profile_image or 'avatar.png' %}
 
-        <img src="{{ url_for('static', filename='uploads/' + img) }}">
+        <!-- ✅ FIXED: safe static path -->
+        <img src="{{ url_for('static', filename='uploads/' ~ img) }}"
+             onerror="this.src='{{ url_for('static', filename='uploads/smartphone.png') }}'">
 
         <div class="mt-1">
-            <strong class="text-white" style="font-size:12px;">{{ current_user.username }}</strong><br>
-            <small class="text-light" style="font-size:11px;">{{ current_user.location }}</small><br>
-            <small class="text-info" style="font-size:11px;">{{ current_user.role|capitalize }}</small>
+            <strong class="text-white" style="font-size:12px;">
+                {{ current_user.username }}
+            </strong><br>
+
+            <small class="text-light" style="font-size:11px;">
+                {{ current_user.location }}
+            </small><br>
+
+            <small class="text-info" style="font-size:11px;">
+                {{ current_user.role|capitalize }}
+            </small>
         </div>
     </div>
 
@@ -173,13 +176,11 @@ body {
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
 
-        <a href="{{ url_for('transfer.transfer_money') }}"
-           class="{% if request.endpoint=='transfer.transfer_money' %}active{% endif %}">
+        <a href="{{ url_for('transfer.transfer_money') }}">
             <i class="bi bi-send"></i> Send Money
         </a>
 
-        <a href="{{ url_for('transfer.recent_transactions_view') }}"
-           class="{% if request.endpoint=='transfer.recent_transactions_view' %}active{% endif %}">
+        <a href="{{ url_for('transfer.recent_transactions_view') }}">
             <i class="bi bi-clock-history"></i> Transactions
         </a>
 
@@ -229,12 +230,13 @@ body {
         <div class="topbar-right d-flex align-items-center gap-2">
 
             <a href="{{ url_for('auth.profile') }}">
-                <img src="{{ url_for('static', filename='uploads/' + (current_user.profile_image or 'avatar.png')) }}"
-                     style="width:30px;height:30px;border-radius:50%;">
+                <img src="{{ url_for('static', filename='uploads/' ~ (current_user.profile_image or 'avatar.png')) }}"
+                     style="width:28px;height:28px;border-radius:50%;object-fit:cover;"
+                     onerror="this.src='{{ url_for('static', filename='uploads/avatar.png') }}'">
             </a>
 
             <a href="{{ url_for('auth.logout') }}"
-               class="btn btn-outline-danger logout-btn">
+               class="btn btn-outline-danger">
                <i class="bi bi-box-arrow-right"></i>
             </a>
 
